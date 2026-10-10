@@ -6,11 +6,11 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../components/useAuth';
 import Link from 'next/link';
 
-const URL_DEL_BACKEND = 'https://friendly-space-lamp-69xwwg95q9g7cqj-8001.app.github.dev'; // <-- RECUERDA REEMPLAZAR
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://settermind-flask-template.onrender.com'; // <-- RECUERDA REEMPLAZAR
 
 export default function StrategiesPage() {
   const { logout } = useAuth();
-  const router = useRouter();
+  const router = useRouter();frontend/src/components/Sidebar.tsx
   const [strategies, setStrategies] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);

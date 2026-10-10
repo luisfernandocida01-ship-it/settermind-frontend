@@ -135,20 +135,6 @@ const handleFinalAnalysis = async (context: { niche: string, avatar: string }) =
 };
   return (
     <main className="bg-gray-900 text-white min-h-screen flex flex-col items-center p-8">
-      <nav className="w-full max-w-5xl mb-12 flex justify-between items-center">
-        <div className="flex items-center space-x-8">
-          <h1 className="text-3xl font-bold">SetterMind AI</h1>
-          <Link href="/" className="text-white font-bold">Dashboard</Link>
-          <Link href="/conversations" className="text-white font-bold">Bandeja</Link>
-          <Link href="/prospect" className="text-gray-300 hover:text-white">Prospectar</Link>
-          <Link href="/history" className="text-gray-300 hover:text-white">Historial</Link>
-          <Link href="/strategies" className="text-gray-300 hover:text-white">Estrategias</Link>
-          <Link href="/profile-magnet" className="text-gray-300 hover:text-white">Perfil Magnético</Link>
-          <Link href="/content-factory" className="text-white font-bold">Fábrica de Contenidos</Link>
-          <Link href="/resources" className="text-gray-300 hover:text-white">Portafolio</Link>
-        </div>
-        <button onClick={logout} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Cerrar Sesión</button>
-      </nav>
 
       {step === 1 && (
         <div className="w-full max-w-2xl">
