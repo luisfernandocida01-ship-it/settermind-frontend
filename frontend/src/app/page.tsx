@@ -137,24 +137,42 @@ const handleFinalAnalysis = async (context: { niche: string, avatar: string }) =
     <main className="bg-gray-900 text-white min-h-screen flex flex-col items-center p-8">
 
       {step === 1 && (
-        <div className="w-full max-w-2xl">
-          <h1 className="text-4xl font-bold text-center mb-6">Paso 1: Pega la URL del Post</h1>
-          <form onSubmit={handleFetchDetails} className="bg-gray-800 p-8 rounded-lg">
-            {error && <div className="bg-red-500 p-3 mb-4 rounded-md">{error}</div>}
-            <input
-              type="text"
-              value={postUrl}
-              onChange={(e) => dispatch({ type: 'SET_FIELD', field: 'postUrl', value: e.target.value })}
-              required
-              placeholder="https://www.instagram.com/p/..."
-              className="bg-gray-700 border border-gray-600 text-white rounded-lg w-full p-2.5 mb-4"
-            />
-            <button type="submit" disabled={isLoading} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg flex justify-center items-center space-x-2">
-              {isLoading ? <><Spinner /> <span>Obteniendo Contexto...</span></> : 'Siguiente Paso →'}
-            </button>
-          </form>
-        </div>
-      )}
+<div className="w-full max-w-2xl mx-auto py-10">
+  <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-8 shadow-2xl">
+    <div className="text-center mb-6">
+      <span className="inline-block bg-sky-500/10 text-sky-400 text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-sky-500/20 mb-3">
+        Flujo de Cualificación
+      </span>
+      <h1 className="text-2xl font-bold text-white tracking-tight">
+        Paso 1: Pega la URL del Post
+      </h1>
+      <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+        Ingresa el enlace de Instagram o red social del contenido que deseas analizar para extraer prospectos calificados.
+      </p>
+    </div>
+
+    <form onSubmit={handleUrlSubmit} className="space-y-4">
+      <div>
+        <input
+          type="url"
+          required
+          value={postUrl}
+          onChange={(e) => setPostUrl(e.target.value)}
+          placeholder="https://www.instagram.com/p/..."
+          className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3.5 text-sm text-white placeholder-slate-500 outline-none transition"
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={isAnalyzing}
+        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition shadow-lg shadow-emerald-950/40 flex items-center justify-center space-x-2 disabled:opacity-60 cursor-pointer"
+      >
+        <span>{isAnalyzing ? 'Procesando post...' : 'Siguiente Paso →'}</span>
+      </button>
+    </form>
+  </div>
+</div>
 
       {step === 2 && postDetails && (
         <PostContextDisplay
