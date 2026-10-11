@@ -1,328 +1,177 @@
-// frontend/src/app/content-factory/page.tsx - VERSIÓN MAESTRA FINAL (BLINDADA)
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../components/useAuth';
-import Link from 'next/link';
-import { 
-  generateContentIdeas, 
-  generateContentResource, 
-  generateEngagementSequence,
-  generateHighlightsStoryboard 
-} from '@/lib/api';
 
-// --- COMPONENTE #1: Director de Highlights ---
-// --- ¡NUEVO COMPONENTE! ---
-const HighlightsDirector = () => {
-    const [formData, setFormData] = useState({
-        nombre: '', mision: '', metodo: '', resultado: '', oferta: ''
-    });
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [results, setResults] = useState<any | null>(null);
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://settermind-flask-template.onrender.com';
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
+export default function ContentFactoryPage() {
+  const router = useRouter();
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setError(null);
-        setResults(null);
-        try {
-            const data = await generateHighlightsStoryboard(formData);
-            setResults(data);
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    return (
-        <div>
-            {!results ? (
-                <form onSubmit={handleSubmit} className="bg-gray-800 p-8 rounded-lg shadow-lg mb-12 space-y-4">
-                    <h2 className="text-2xl font-bold text-center mb-4">Director de Highlights</h2>
-                    <div>
-                        <label className="block text-sm mb-1">Tu Nombre</label>
-                        <input name="nombre" value={formData.nombre} onChange={handleInputChange} required className="bg-gray-700 w-full p-2.5 rounded-lg" />
-                    </div>
-                    <div>
-                        <label className="block text-sm mb-1">Tu Misión / Tu "Porqué"</label>
-                        <textarea name="mision" value={formData.mision} onChange={handleInputChange} required rows={3} className="bg-gray-700 w-full p-2.5 rounded-lg" />
-                    </div>
-                    <div>
-                        <label className="block text-sm mb-1">Nombre de tu Método</label>
-                        <input name="metodo" value={formData.metodo} onChange={handleInputChange} required className="bg-gray-700 w-full p-2.5 rounded-lg" />
-                    </div>
-                    <div>
-                        <label className="block text-sm mb-1">Un ejemplo de resultado de cliente</label>
-                        <input name="resultado" value={formData.resultado} onChange={handleInputChange} required className="bg-gray-700 w-full p-2.5 rounded-lg" placeholder="Ej: Generó $1,500 en 30 días"/>
-                    </div>
-                    <button type="submit" disabled={isLoading} className="w-full !mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">
-                        {isLoading ? 'Escribiendo Guion...' : '🎬 Generar Guion de Highlights'}
-                    </button>
-                </form>
-            ) : (
-                <div className="space-y-6">
-                    <button onClick={() => setResults(null)} className="text-blue-400">&larr; Volver a generar</button>
-                    {Object.keys(results).map(key => (
-                        <div key={key} className="bg-gray-800 p-6 rounded-lg">
-                            <h3 className="text-xl font-bold mb-3 capitalize text-yellow-400">{key.replace('_', ' ')}</h3>
-                            <ol className="list-decimal list-inside space-y-2 text-gray-300">
-                                {results[key].map((story: string, index: number) => (
-                                    <li key={index}>{story}</li>
-                                ))}
-                            </ol>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {error && <div className="text-center bg-red-800 p-4 rounded-lg mt-8">{error}</div>}
-        </div>
-    );
-};
-
-// --- COMPONENTE #2: Chispa Creativa (COMPLETO Y BLINDADO) ---
-const CreativeSpark = () => {
-  const [topic, setTopic] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [niche, setNiche] = useState('');
+  const [objective, setObjective] = useState('iniciar_conversacion');
+  const [tone, setTone] = useState('consultivo');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [scripts, setScripts] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [ideas, setIdeas] = useState<any | null>(null);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) {
+      router.push('/login');
+    }
+  }, [router]);
+
+  const handleGenerateScripts = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    if (!niche.trim()) {
+      alert('Por favor ingresa tu nicho o tipo de servicio.');
+      return;
+    }
+
+    setIsGenerating(true);
     setError(null);
-    setIdeas(null);
-    console.log('--- [CreativeSpark] Iniciando... Tema:', topic);
+
+    const token = localStorage.getItem('jwt_token');
+
     try {
-      const data = await generateContentIdeas({ topic });
-      console.log('--- [CreativeSpark] Datos recibidos de la API:', data);
-      setIdeas(data);
+      const response = await fetch(`${API_BASE_URL}/api/generate-scripts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          niche: niche.trim(),
+          objective,
+          tone,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.detail || 'No se pudieron generar los guiones.');
+      }
+
+      setScripts(Array.isArray(data.scripts) ? data.scripts : Array.isArray(data) ? data : []);
     } catch (err: any) {
-      console.error('--- [CreativeSpark] ¡ERROR!', err);
-      setError(err.message);
+      setError(err.message || 'Error de conexión con el servidor.');
     } finally {
-      setIsLoading(false);
+      setIsGenerating(false);
     }
   };
 
+  const handleCopy = (text: string, idx: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedIndex(idx);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
   return (
-    <div>
-      <form onSubmit={handleSubmit} className="bg-gray-800 p-8 rounded-lg shadow-lg mb-12">
-        <div className="mb-4">
-          <label htmlFor="topic" className="block mb-2 text-lg font-medium">Tema Principal del Contenido</label>
-          <p className="text-sm text-gray-400 mb-4">¿Sobre qué quieres que la IA genere ideas?</p>
-          <input
-            type="text"
-            id="topic"
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            required
-            className="bg-gray-700 w-full p-2.5 rounded-lg"
-            placeholder="Ej: Cómo superar el miedo a vender"
-          />
+    <div className="w-full max-w-4xl mx-auto space-y-10 py-2">
+      {/* Formulario Principal */}
+      <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-7 md:p-8 shadow-xl">
+        <div className="text-center mb-6">
+          <span className="inline-block bg-sky-500/10 text-sky-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-sky-500/20 mb-2">
+            Fase 2 • Conversión
+          </span>
+          <h1 className="text-2xl font-bold text-white tracking-tight">
+            Fábrica de Guiones Consultivos
+          </h1>
+          <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+            Diseña aperturas y preguntas estratégicas personalizadas para romper el hielo sin sonar invasivo.
+          </p>
         </div>
-        <button type="submit" disabled={isLoading} className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg">
-          {isLoading ? 'Generando Ideas...' : '💡 Generar Chispa Creativa'}
-        </button>
-      </form>
 
-      {error && <div className="text-center bg-red-800 p-4 rounded-lg mt-8">{error}</div>}
+        {error && (
+          <div className="mb-5 bg-amber-950/40 border border-amber-700/60 text-amber-300 p-3 rounded-xl text-xs text-center font-medium">
+            {error}
+          </div>
+        )}
 
-      {ideas && (
-        <div className="space-y-8 mt-12">
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-xl font-bold mb-3">Tu Serie de Contenidos</h3>
-            <ol className="list-decimal list-inside space-y-2">
-              {ideas.post_series?.map((item: any, index: number) => {
-                const title = typeof item === 'string' ? item : (item.title || JSON.stringify(item));
-                return <li key={index}>{title}</li>;
-              })}
-            </ol>
+        <form onSubmit={handleGenerateScripts} className="space-y-5">
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+              Nicho o Servicio
+            </label>
+            <input
+              type="text"
+              value={niche}
+              onChange={(e) => setNiche(e.target.value)}
+              placeholder="Ej: Asesoría financiera, Agencia de contenidos, Coaching High-Ticket..."
+              className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition"
+            />
           </div>
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-xl font-bold mb-3">Estructura para Caso de Estudio</h3>
-            <ul className="list-disc list-inside space-y-2 text-gray-300">
-              {ideas.case_study_structure && (typeof ideas.case_study_structure === 'object' && !Array.isArray(ideas.case_study_structure) ?
-                Object.entries(ideas.case_study_structure).map(([key, value]) => <li key={key}><strong>{key.replace(/_/g, ' ').toUpperCase()}:</strong> {String(value)}</li>) :
-                Array.isArray(ideas.case_study_structure) ?
-                ideas.case_study_structure.map((point: string, index: number) => <li key={index}>{point}</li>) :
-                <li>{String(ideas.case_study_structure)}</li>
-              )}
-            </ul>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                Objetivo del Guion
+              </label>
+              <select
+                value={objective}
+                onChange={(e) => setObjective(e.target.value)}
+                className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-sm text-white outline-none transition"
+              >
+                <option value="iniciar_conversacion">Iniciar Conversación (Rompehielo)</option>
+                <option value="detectar_dolor">Detectar Dolor / Diagnóstico</option>
+                <option value="agendar_llamada">Transición a Llamada Consultiva</option>
+                <option value="seguimiento">Seguimiento Suave (No invasivo)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                Tono de Comunicación
+              </label>
+              <select
+                value={tone}
+                onChange={(e) => setTone(e.target.value)}
+                className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-sm text-white outline-none transition"
+              >
+                <option value="consultivo">Consultivo & Curioso (Recomendado)</option>
+                <option value="directo">Directo y al Grano</option>
+                <option value="casual">Casual & Relajado</option>
+                <option value="autoridad">Alta Autoridad / Experto</option>
+              </select>
+            </div>
           </div>
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-xl font-bold mb-3">Idea para "Problema Oculto"</h3>
-              {/* --- ¡CÓDIGO BLINDADO FINAL AQUÍ! --- */}
-  {typeof ideas.hidden_problem_idea === 'object' ? (
-    <div>
-      <p className="text-gray-300 font-semibold">"{ideas.hidden_problem_idea.title}"</p>
-      <p className="text-gray-400 italic mt-2">{ideas.hidden_problem_idea.concept}</p>
-    </div>
-  ) : (
-    <p className="text-gray-300 italic">"{ideas.hidden_problem_idea}"</p>
-  )}
-</div>
-        </div>
+
+          <button
+            type="submit"
+            disabled={isGenerating}
+            className="w-full bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition shadow-lg shadow-sky-950/40 flex items-center justify-center space-x-2 disabled:opacity-60 cursor-pointer"
+          >
+            <span>💬</span>
+            <span>{isGenerating ? 'Generando Guiones con IA...' : 'Generar Guiones'}</span>
+          </button>
+        </form>
+      </div>
+
+      {scripts.length > 0 && (
+        <section className="space-y-4">
+          <h2 className="text-xl font-bold text-white">Guiones generados</h2>
+          {scripts.map((script, index) => {
+            const text = typeof script === 'string'
+              ? script
+              : script.text || script.script || script.content || JSON.stringify(script);
+            return (
+              <article key={index} className="bg-[#162032] border border-[#24334A] rounded-xl p-5">
+                <p className="text-sm text-slate-200 whitespace-pre-wrap">{text}</p>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(text, index)}
+                  className="mt-4 text-sm text-sky-400 hover:text-sky-300"
+                >
+                  {copiedIndex === index ? 'Copiado' : 'Copiar'}
+                </button>
+              </article>
+            );
+          })}
+        </section>
       )}
     </div>
   );
-};
-
-// --- COMPONENTE #3: Arsenal de Recursos (COMPLETO Y BLINDADO) ---
-const ResourceArsenal = () => {
-    const [topic, setTopic] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [results, setResults] = useState<any | null>(null);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault(); setIsLoading(true); setError(null); setResults(null);
-        try {
-            const data = await generateContentResource({ topic });
-            setResults(data);
-        } catch (err: any) { setError(err.message); } 
-        finally { setIsLoading(false); }
-    };
-
-    return (
-        <div>
-            <form onSubmit={handleSubmit} className="bg-gray-800 p-8 rounded-lg shadow-lg mb-12">
-                <div className="mb-4">
-                    <label htmlFor="resourceTopic" className="block mb-2 text-lg font-medium">Tema del Recurso</label>
-                    <p className="text-sm text-gray-400 mb-4">¿Sobre qué problema específico quieres crear una checklist?</p>
-                    <input type="text" id="resourceTopic" value={topic} onChange={(e) => setTopic(e.target.value)} required className="bg-gray-700 w-full p-2.5 rounded-lg" placeholder="Ej: Primeros pasos para invertir"/>
-                </div>
-                <button type="submit" disabled={isLoading} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg">
-                    {isLoading ? 'Creando Checklist...' : '⚙️ Crear Recurso'}
-                </button>
-            </form>
-
-            {error && <div className="text-center bg-red-800 p-4 rounded-lg mt-8">{error}</div>}
-
-            {results && (
-                <div className="bg-gray-800 p-8 rounded-lg">
-                    <h2 className="text-3xl font-bold mb-4">{results.title}</h2>
-                    <p className="text-gray-300 mb-6 italic">{results.introduction}</p>
-                    <h3 className="text-xl font-semibold mb-3">✅ Checklist de Acciones:</h3>
-                    <ul className="list-none space-y-3 mb-6">
-                        {results.checklist_items?.map((item: any, index: number) => {
-                            const stepText = typeof item === 'string' ? item : (item.step || item.description || JSON.stringify(item));
-                            return (<li key={index} className="bg-gray-700 p-3 rounded-md flex items-center">
-                                <span className="mr-3 text-lg">◻️</span>
-                                <span>{stepText}</span>
-                            </li>);
-                        })}
-                    </ul>
-                    <h3 className="text-xl font-semibold mb-3">🚀 Siguiente Paso (CTA):</h3>
-                    <p className="text-gray-300">{results.cta}</p>
-                </div>
-            )}
-        </div>
-    );
-};
-
-// --- COMPONENTE #4: Laboratorio de Engagement (COMPLETO Y BLINDADO) ---
-const EngagementLab = () => {
-    const [topic, setTopic] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [results, setResults] = useState<any | null>(null);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault(); setIsLoading(true); setError(null); setResults(null);
-        try {
-            const data = await generateEngagementSequence({ topic });
-            setResults(data);
-        } catch (err: any) { setError(err.message); }
-        finally { setIsLoading(false); }
-    };
-
-    const getStickerEmoji = (type: string | undefined) => {
-        if (!type) return '✨';
-        if (type.toUpperCase().includes('ENCUESTA')) return '📊';
-        if (type.toUpperCase().includes('QUIZ')) return '퀴';
-        if (type.toUpperCase().includes('PREGUNTA')) return '❓';
-        return '✨';
-    };
-
-    return (
-        <div>
-            <form onSubmit={handleSubmit} className="bg-gray-800 p-8 rounded-lg shadow-lg mb-12">
-                <div className="mb-4">
-                    <label htmlFor="engagementTopic" className="block mb-2 text-lg font-medium">Tema de la Interacción</label>
-                    <p className="text-sm text-gray-400 mb-4">¿Sobre qué tema quieres crear una secuencia de Stories?</p>
-                    <input type="text" id="engagementTopic" value={topic} onChange={(e) => setTopic(e.target.value)} required className="bg-gray-700 w-full p-2.5 rounded-lg" placeholder="Ej: El principal desafío al crear un curso"/>
-                </div>
-                <button type="submit" disabled={isLoading} className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-4 rounded-lg">
-                    {isLoading ? 'Diseñando Secuencia...' : '🔬 Generar Secuencia de Stories'}
-                </button>
-            </form>
-
-            {error && <div className="text-center bg-red-800 p-4 rounded-lg mt-8">{error}</div>}
-
-            {results && results.story_sequence && (
-                <div className="space-y-6">
-                    <h2 className="text-3xl font-bold text-center">Tu Secuencia de 5 Stories</h2>
-                    {results.story_sequence.map((story: any, index: number) => (
-                        <div key={index} className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-                            <p className="font-bold text-lg text-yellow-400 mb-2">Story {index + 1}: {story.title || 'Sin Título'}</p>
-                            <p className="mb-4 text-gray-300">{story.text || ''}</p>
-                            <div className="bg-gray-700 p-4 rounded-md">
-                                <p className="font-semibold text-sm text-white">
-                                    {getStickerEmoji(story.sticker_type)} Sticker: <span className="font-normal uppercase">{story.sticker_type || 'INDEFINIDO'}</span>
-                                </p>
-                                {story.sticker_options && Array.isArray(story.sticker_options) &&
-                                    <ul className="list-disc list-inside mt-2 text-gray-300 text-sm">
-                                        {story.sticker_options.map((opt: string, i: number) => <li key={i}>{opt}</li>)}
-                                    </ul>
-                                }
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
-
-// --- COMPONENTE PRINCIPAL (sin cambios) ---
-// --- El Componente Principal de la Página que maneja las Pestañas (ACTUALIZADO) ---
-export default function ContentFactoryPage() {
-  const { logout } = useAuth();
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState('director'); // 'director', 'spark', 'arsenal', o 'engagement'
-  useEffect(() => {
-    const storedToken = localStorage.getItem('jwt_token');
-    if (!storedToken) { router.push('/login'); }
-}, [router]); // El array de dependencias es importante  
-
-  return (
-    <main className="bg-gray-900 text-white min-h-screen flex flex-col items-center p-8">
-      {/* Navbar con el nuevo enlace activo */}
-      <div className="w-full max-w-4xl">
-        <h1 className="text-4xl font-bold text-center mb-8">Fábrica de Contenidos</h1>
-        {/* Selector de Pestañas (ACTUALIZADO) */}
-        <div className="mb-8 flex justify-center border-b border-gray-700">
-          <button onClick={() => setActiveTab('director')} className={activeTab === 'director' ? '...' : '...'}>Director de Highlights</button>
-          <button onClick={() => setActiveTab('spark')} className={`py-4 px-6 ... ${activeTab === 'spark' ? 'border-blue-500 text-white' : 'text-gray-400'}`}>Chispa Creativa</button>
-          <button onClick={() => setActiveTab('arsenal')} className={`py-4 px-6 ... ${activeTab === 'arsenal' ? 'border-blue-500 text-white' : 'text-gray-400'}`}>Arsenal de Recursos</button>
-          <button onClick={() => setActiveTab('engagement')} className={`py-4 px-6 ... ${activeTab === 'engagement' ? 'border-blue-500 text-white' : 'text-gray-400'}`}>Laboratorio de Engagement</button>
-        </div>
-        {/* Contenido de la Pestaña Activa (ACTUALIZADO) */}
-        {activeTab === 'director' && <HighlightsDirector />}
-        {activeTab === 'spark' && <CreativeSpark />}
-        {activeTab === 'arsenal' && <ResourceArsenal />}
-        {activeTab === 'engagement' && <EngagementLab />}
-      </div>
-    </main>
-   );
 }
