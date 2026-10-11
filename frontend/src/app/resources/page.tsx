@@ -29,7 +29,7 @@ export default function ResourcesPage() {
     const storedToken = localStorage.getItem('jwt_token');
     try {
       const response = await fetch(`${URL_DEL_BACKEND}/api/resources`, {
-        headers: { 'Authorization': `Bearer ${storedToken}` }
+        headers: { 'Authorization': `Bearer ` },
       });
       const data = await response.json();
       if (!response.ok) { throw new Error(data.detail || 'No se pudo cargar los recursos'); }
@@ -50,7 +50,7 @@ export default function ResourcesPage() {
     try {
       const response = await fetch(`${URL_DEL_BACKEND}/api/resources`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${storedToken}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ` },
         body: JSON.stringify({ title, description, url, resource_type: resourceType }),
       });
       if (!response.ok) {

@@ -30,9 +30,9 @@ interface ProfileAnalysis {
 interface PostContextProps {
   postDetails: PostDetails | null;
   profileAnalysis: ProfileAnalysis | null;
-  onAnalyze: (context: { niche: string, avatar: string }) => void;
-  onReset: () => void;
-  isLoading: boolean;
+  onAnalyze?: (context: { niche: string, avatar: string }) => void;
+  onReset?: () => void;
+  isLoading?: boolean;
 }
 
 // --- NUEVO HELPER PARA MOSTRAR EL NICHO ---
@@ -71,11 +71,11 @@ export function PostContextDisplay({ postDetails, profileAnalysis, onAnalyze, on
   const [niche, setNiche] = useState('');
   const [avatar, setAvatar] = useState('');
 
-  const handleAnalysisClick = () => { onAnalyze({ niche, avatar }); };
+  const handleAnalysisClick = () => { onAnalyze?.({ niche, avatar }); };
 
   return (
     <div className="w-full max-w-4xl space-y-8">
-      <button onClick={onReset} className="text-blue-400 hover:text-blue-300">&larr; Usar otra URL</button>
+      {onReset && <button onClick={onReset} className="text-blue-400 hover:text-blue-300">&larr; Usar otra URL</button>}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="space-y-6">
@@ -127,9 +127,11 @@ export function PostContextDisplay({ postDetails, profileAnalysis, onAnalyze, on
         </div>
       </div>
       
-      <button onClick={handleAnalysisClick} disabled={isLoading || !niche || !avatar} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-900 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg">
-        {isLoading ? 'Analizando...' : '🧠 Analizar Congruencia y Comentarios'}
-      </button>
+      {onAnalyze && (
+        <button onClick={handleAnalysisClick} disabled={isLoading || !niche || !avatar} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-900 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg">
+          {isLoading ? 'Analizando...' : '🧠 Analizar Congruencia y Comentarios'}
+        </button>
+      )}
     </div>
   );
 }
