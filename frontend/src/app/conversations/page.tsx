@@ -1,274 +1,211 @@
-// frontend/src/app/conversations/page.tsx - VERSIÓN COMPLETA Y FUNCIONAL
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useAuth } from '@/components/useAuth';
-// Importamos las nuevas funciones de nuestra API
-import { getOutboxItems, markOutboxItemAsSent, getConversations, updateConversation, exportLead } from '@/lib/api';
-// --- Tipos de Datos (para claridad con TypeScript) ---
-interface OutboxItem {
-  id: string;
-  post_url: string;
-  prospect_username: string;
-  prospect_comment: string;
-  selected_opener: string;
-  score: string;
-}
 
-interface Conversation {
-  id: string;
-  lead_data: {
-    username: string;
-    comment: string;
-    pain_point: string;
-    score: string;
-    opener: string;
-    post_url: string;
-  };
-  status: string;
-  notes: string;
-}
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://settermind-flask-template.onrender.com';
 
-// --- Componente de la Tarjeta de "Bandeja de Salida" (sin cambios) ---
-const OutboxCard = ({ item, onSent }: { item: OutboxItem; onSent: (id: string) => void }) => {
-    // ... (este componente se queda exactamente igual que antes)
-    const handleSend = async () => {
-        window.open(item.post_url, '_blank');
-        try {
-            await navigator.clipboard.writeText(item.selected_opener);
-            alert('✅ ¡Opener copiado al portapapeles!\n\nPégalo como respuesta al comentario en la nueva pestaña.');
-            onSent(item.id);
-        } catch (err) {
-            alert("Error al copiar al portapapeles.");
-        }
-    };
-
-    return (
-        <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-            <div className="flex justify-between items-start mb-3">
-                <p className="font-bold text-lg text-white">@{item.prospect_username}</p>
-                {item.score && <span className="bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full">{item.score}</span>}
-            </div>
-            <blockquote className="border-l-4 border-gray-600 pl-4 my-4">
-                <p className="italic text-gray-400">"{item.prospect_comment}"</p>
-            </blockquote>
-            <div className="bg-gray-900 p-4 rounded-md mb-4">
-                <p className="font-mono text-sm text-gray-300">{item.selected_opener}</p>
-            </div>
-            <button
-                onClick={handleSend}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105"
-            >
-                🚀 Enviar (Abrir y Copiar)
-            </button>
-        </div>
-    );
-};
-
-const ConversationCard = ({ convo, onCardClick }: { convo: Conversation; onCardClick: (convo: Conversation) => void; }) => {
-    return (
-        <button 
-            onClick={() => onCardClick(convo)}
-            className="bg-gray-800 p-4 rounded-lg border border-gray-700 text-left hover:border-purple-500 transition-all"
-        >
-            <div className="flex justify-between items-center">
-                <p className="font-bold text-white truncate">@{convo.lead_data.username}</p>
-                <span className="text-xs bg-purple-600 text-white px-2 py-1 rounded-full flex-shrink-0">{convo.status}</span>
-            </div>
-            <p className="text-sm text-gray-400 mt-2 line-clamp-2">"{convo.lead_data.comment}"</p>
-        </button>
-    );
-};
-
-// --- Componente Principal de la Página (REFACTORIZADO) ---
 export default function ConversationsPage() {
-  const { logout } = useAuth();
   const router = useRouter();
-  
-  const [outboxItems, setOutboxItems] = useState<OutboxItem[]>([]);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+
+  const [pendingItems, setPendingItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedConvo, setSelectedConvo] = useState<Conversation | null>(null);
-  const [modalNotes, setModalNotes] = useState('');
-  const [modalStatus, setModalStatus] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | number | null>(null);
 
-// Reemplaza handlePushToCrm con esta función
-const handleExportLead = async (convoId: string) => {
-    try {
-        await exportLead(convoId); // Llamamos a la nueva función
-        alert('✅ ¡Prospecto exportado exitosamente!');
-        handleCloseModal();
-        await fetchData(); // Recargamos para ver el nuevo estado "exportado"
-    } catch (error: any) {
-        console.error("Error al exportar el lead:", error);
-        alert(`No se pudo exportar el prospecto: ${error.message}`);
+  useEffect(() => {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) {
+      router.push('/login');
+      return;
     }
-};
+    fetchConversations();
+  }, [router]);
 
-  // --- FUNCIÓN CENTRALIZADA PARA CARGAR DATOS ---
-  const fetchData = async () => {
+  const fetchConversations = async () => {
     setIsLoading(true);
+    setError(null);
+    const token = localStorage.getItem('jwt_token');
+
     try {
-      // Hacemos las dos llamadas a la API en paralelo para más eficiencia
-      const [outboxData, convosData] = await Promise.all([
-        getOutboxItems(),
-        getConversations()
-      ]);
-      setOutboxItems(outboxData);
-      setConversations(convosData);
-    } catch (error) {
-      console.error("Error al cargar los datos de la bandeja:", error);
-      alert("No se pudieron cargar los datos. Intenta recargar la página.");
+      const response = await fetch(`${API_BASE_URL}/api/conversations`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('No se pudieron cargar los mensajes del pipeline.');
+      }
+
+      const data = await response.json();
+      setPendingItems(Array.isArray(data) ? data : data.conversations || []);
+    } catch (err: any) {
+      // Fallback a localStorage si el backend aún no persiste el pipeline
+      const stored = localStorage.getItem('saved_conversations');
+      if (stored) {
+        try {
+          setPendingItems(JSON.parse(stored));
+        } catch (e) {
+          setError(err.message || 'Error al cargar mensajes pendientes.');
+        }
+      } else {
+        setError(null);
+        setPendingItems([]);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (!localStorage.getItem('jwt_token')) {
-      router.push('/login');
-      return;
+  const handleCopyAndOpen = (item: any) => {
+    const textToCopy = item.suggested_response || item.response || item.message || '';
+    if (textToCopy) {
+      navigator.clipboard.writeText(textToCopy);
+      setCopiedId(item.id || item.username);
+      setTimeout(() => setCopiedId(null), 2500);
     }
-    fetchData();
-  }, [router]);
 
-  const handleItemSent = async (itemId: string) => {
-    try {
-      await markOutboxItemAsSent(itemId);
-      // --- ¡AQUÍ ESTÁ LA SINCRONIZACIÓN! ---
-      // Después de enviar, volvemos a cargar TODOS los datos para reflejar el cambio.
-      await fetchData(); 
-    } catch (error) {
-      console.error("Error al marcar el item como enviado:", error);
-      alert("Hubo un error al actualizar el estado del opener. Por favor, recarga la página.");
+    if (item.url || item.post_url) {
+      window.open(item.url || item.post_url, '_blank');
+    } else if (item.username) {
+      window.open(`https://www.instagram.com/${item.username.replace('@', '')}/`, '_blank');
     }
   };
 
-const handleOpenModal = (convo: Conversation) => {
-  setSelectedConvo(convo);
-  setModalNotes(convo.notes || '');
-  setModalStatus(convo.status);
-  setIsModalOpen(true);
-};
-
-const handleCloseModal = () => {
-  setIsModalOpen(false);
-  setSelectedConvo(null);
-};
-
-const handleSaveChanges = async () => {
-  if (!selectedConvo) return;
-
-  try {
-    await updateConversation(selectedConvo.id, {
-      notes: modalNotes,
-      status: modalStatus,
-    });
-    handleCloseModal();
-    await fetchData(); // Recargamos todo para ver los cambios al instante
-  } catch (error: any) {
-    console.error("Error al guardar los cambios:", error);
-    alert(`No se pudieron guardar los cambios: ${error.message}`);
-  }
-};
+  const handleMarkDone = (id: any) => {
+    const updated = pendingItems.filter((i) => (i.id || i.username) !== id);
+    setPendingItems(updated);
+    localStorage.setItem('saved_conversations', JSON.stringify(updated));
+  };
 
   return (
-    <main className="bg-gray-900 text-white min-h-screen flex flex-col items-center p-8">
-        {isLoading ? (
-            <p>Cargando bandeja...</p>
-        ) : (
-            <div className="w-full max-w-4xl space-y-12">
-                <div>
-                    <h2 className="text-3xl font-bold mb-6 border-b-2 border-blue-500 pb-2">Bandeja de Salida ({outboxItems.length} Pendientes)</h2>
-                    {outboxItems.length > 0 ? (
-                        <div className="space-y-6">
-                            {outboxItems.map(item => (
-                                <OutboxCard key={item.id} item={item} onSent={handleItemSent} />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center bg-gray-800 p-8 rounded-lg">
-                            <p className="text-gray-400">¡Todo listo! No tienes openers pendientes de envío.</p>
-                        </div>
-                    )}
-                </div>
-
-                <div>
-                    <h2 className="text-3xl font-bold mb-6 border-b-2 border-gray-700 pb-2">Conversaciones en Seguimiento ({conversations.length} Activas)</h2>
-                    {conversations.length > 0 ? (
-                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {conversations.map(convo => (
-                                <ConversationCard key={convo.id} convo={convo} onCardClick={handleOpenModal} />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center bg-gray-800 p-8 rounded-lg">
-                           <p className="text-gray-500">Cuando envíes un opener, la conversación aparecerá aquí para que puedas hacerle seguimiento.</p>
-                        </div>
-                    )}
-                </div>
-            </div>
-        )}
-  {/* --- ¡NUEVO MODAL AQUÍ! --- */}
-  {isModalOpen && selectedConvo && (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center p-4 z-50">
-      <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg p-6 border border-gray-700">
-        <h3 className="text-2xl font-bold mb-4">Gestionar Conversación</h3>
-        <p className="font-semibold text-white">@{selectedConvo.lead_data.username}</p>
-        <p className="text-sm text-gray-400 mb-4 italic">"{selectedConvo.lead_data.comment}"</p>
-
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-300 mb-1">Estado</label>
-            <select
-              id="status"
-              value={modalStatus}
-              onChange={(e) => setModalStatus(e.target.value)}
-              className="bg-gray-700 border border-gray-600 text-white rounded-lg w-full p-2.5"
-            >
-              <option>iniciado</option>
-              <option>respondió</option>
-              <option>interesado</option>
-              <option>agendado</option>
-              <option>cerrado (ganado)</option>
-              <option>cerrado (perdido)</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-gray-300 mb-1">Notas</label>
-            <textarea
-              id="notes"
-              rows={5}
-              value={modalNotes}
-              onChange={(e) => setModalNotes(e.target.value)}
-              className="bg-gray-700 border border-gray-600 text-white rounded-lg w-full p-2.5"
-              placeholder="Añade tus notas de seguimiento aquí..."
-            />
-          </div>
+    <div className="w-full max-w-4xl mx-auto space-y-8 py-2">
+      {/* Encabezado */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#24334A] pb-6">
+        <div>
+          <span className="inline-block bg-sky-500/10 text-sky-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-sky-500/20 mb-2">
+            Fase 2 • Ejecución Diaria
+          </span>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">
+            Bandeja de Salida ({pendingItems.length} Pendientes)
+          </h1>
+          <p className="text-xs text-slate-400 mt-1">
+            Revisa tus comentarios cualificados, copia la respuesta consultiva y contacta al prospecto.
+          </p>
         </div>
 
-        <div className="mt-6 flex justify-end space-x-3">
-          <button onClick={handleCloseModal} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg">
-            Cancelar
-          </button>
-          <button onClick={handleSaveChanges} className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded-lg">
-            Guardar Cambios
-          </button>
-
-          <button onClick={handleSaveChanges} className="bg-purple-600 hover:bg-purple-500 ...">
-            Guardar Cambios
-          </button>
-          <button onClick={() => handleExportLead(selectedConvo.id)} className="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg">
-            Exportar Lead
+        <button
+          onClick={fetchConversations}
+          className="self-start md:self-auto bg-[#162032] hover:bg-[#1E293B] text-slate-300 border border-[#24334A] text-xs font-bold py-2.5 px-4 rounded-xl transition cursor-pointer"
+        >
+          ↻ Actualizar Bandeja
         </button>
-       </div>
       </div>
+
+      {error && (
+        <div className="bg-amber-950/40 border border-amber-700/60 text-amber-300 p-4 rounded-xl text-xs font-medium text-center">
+          {error}
+        </div>
+      )}
+
+      {/* Estado Cargando */}
+      {isLoading && (
+        <div className="text-center py-16 text-slate-400 text-sm">
+          <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+          Cargando oportunidades del pipeline...
+        </div>
+      )}
+
+      {/* Estado Vacío */}
+      {!isLoading && pendingItems.length === 0 && (
+        <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-12 text-center shadow-xl space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-[#0B121E] border border-[#24334A] flex items-center justify-center text-2xl mx-auto text-sky-400">
+            📬
+          </div>
+          <h3 className="text-lg font-bold text-white">No tienes mensajes pendientes</h3>
+          <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            Dirígete a <strong className="text-sky-400">Dashboard Principal</strong> o <strong className="text-sky-400">Radar de Prospectos</strong> para analizar una publicación y añadir prospectos a tu bandeja de salida.
+          </p>
+          <button
+            onClick={() => router.push('/')}
+            className="bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold py-2.5 px-5 rounded-xl transition shadow-lg shadow-sky-950/40 cursor-pointer"
+          >
+            Ir a Cualificar Prospectos →
+          </button>
+        </div>
+      )}
+
+      {/* Lista de Mensajes Pendientes */}
+      {!isLoading && pendingItems.length > 0 && (
+        <div className="space-y-6">
+          {pendingItems.map((item, idx) => {
+            const itemKey = item.id || item.username || idx;
+            const isCopied = copiedId === itemKey;
+
+            return (
+              <div
+                key={itemKey}
+                className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 shadow-xl space-y-5 transition hover:border-sky-500/40"
+              >
+                {/* Cabecera del Prospecto */}
+                <div className="flex items-center justify-between border-b border-[#24334A] pb-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-9 h-9 rounded-full bg-[#0B121E] border border-sky-500/40 flex items-center justify-center text-sky-400 font-bold text-xs">
+                      @
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-white text-sm">
+                        {item.username?.startsWith('@') ? item.username : `@${item.username || 'Usuario Anónimo'}`}
+                      </h3>
+                      {item.author && item.author !== item.username && (
+                        <p className="text-[11px] text-slate-400">{item.author}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <span className="bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[11px] font-bold px-3 py-1 rounded-full">
+                    {item.score ? `Score: ${item.score}/10` : 'Calificado'}
+                  </span>
+                </div>
+
+                {/* Comentario del Prospecto */}
+                <div className="bg-[#0B121E] border border-[#24334A]/60 rounded-xl p-4 text-xs text-slate-300 italic leading-relaxed">
+                  &ldquo;{item.comment_text || item.text || item.comment || 'Comentario sin texto registrado'}&rdquo;
+                </div>
+
+                {/* Respuesta Consultiva Generada */}
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Respuesta Consultiva Sugerida:
+                  </span>
+                  <div className="bg-[#0E1E33] border border-[#1E3A5F] rounded-xl p-4 text-xs text-sky-200 leading-relaxed font-sans">
+                    {item.suggested_response || item.response || item.message || 'Sin respuesta sugerida.'}
+                  </div>
+                </div>
+
+                {/* Botones de Acción */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                  <button
+                    onClick={() => handleCopyAndOpen(item)}
+                    className="w-full sm:flex-1 bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 px-5 rounded-xl text-xs transition shadow-lg shadow-sky-950/40 flex items-center justify-center space-x-2 cursor-pointer"
+                  >
+                    <span>🚀</span>
+                    <span>{isCopied ? '¡Copiado! Abriendo destino...' : 'Enviar (Abrir y Copiar)'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleMarkDone(itemKey)}
+                    className="w-full sm:w-auto bg-[#1E293B] hover:bg-emerald-950/60 hover:text-emerald-300 hover:border-emerald-700/60 text-slate-300 font-semibold py-3 px-4 rounded-xl text-xs transition border border-[#334155] cursor-pointer"
+                  >
+                    ✓ Marcar Enviado
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
-  )}
-    </main>
   );
 }
