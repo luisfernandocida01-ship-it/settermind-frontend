@@ -1,85 +1,118 @@
-// components/Sidebar.tsx
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-
-const navigationLinks = [
-  { group: "ESTRATEGIA & RADAR", items: [
-    { name: "Estrategia & Avatar", href: "/strategies", icon: "✦" },
-    { name: "Radar de Prospectos", href: "/prospect", icon: "◎" },
-  ]},
-  { group: "CONVERSIÓN & GUIONES", items: [
-    { name: "Fábrica de Guiones", href: "/content-factory", icon: "💬" },
-    { name: "Imán de Perfil", href: "/profile-magnet", icon: "🧲" },
-    { name: "Pipeline & Mensajes", href: "/conversations", icon: "🚀" },
-  ]},
-  { group: "GESTIÓN & CONTROL", items: [
-    { name: "Historial de Análisis", href: "/history", icon: "📋" },
-    { name: "Recursos & Bonos", href: "/resources", icon: "📚" },
-  ]}
-];
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useAuth } from './useAuth';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { logout } = useAuth();
+
+  if (pathname === '/login' || pathname === '/register') {
+    return null;
+  }
+
+  const navSections = [
+    {
+      phase: 'FASE 1: ESTRATEGIA & RADAR',
+      items: [
+        { name: '1. Estrategia & Avatar', path: '/strategies', icon: '✦' },
+        { name: '2. Radar de Prospectos', path: '/prospect', icon: '◎' },
+      ],
+    },
+    {
+      phase: 'FASE 2: CONVERSIÓN & MENSAJES',
+      items: [
+        { name: '3. Fábrica de Guiones', path: '/content-factory', icon: '💬' },
+        { name: '4. Imán de Perfil', path: '/profile-magnet', icon: '🧲' },
+        { name: '5. Pipeline & Mensajes', path: '/conversations', icon: '🚀' },
+      ],
+    },
+    {
+      phase: 'FASE 3: GESTIÓN & CONTROL',
+      items: [
+        { name: '6. Historial de Análisis', path: '/history', icon: '📋' },
+        { name: '7. Recursos & Bonos', path: '/resources', icon: '📚' },
+      ],
+    },
+  ];
 
   return (
-    <aside className="w-64 min-h-screen bg-[#0B111A] border-r border-[#1E2D42] flex flex-col justify-between text-slate-200">
+    <aside className="w-64 bg-[#080E18] border-r border-[#1E293B] min-h-screen flex flex-col justify-between p-5 text-gray-200 shrink-0 shadow-xl z-20">
       <div>
-        {/* Brand Header */}
-        <div className="p-6 border-b border-[#1E2D42]">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0E2A47] border border-[#D4AF37] flex items-center justify-center font-bold text-[#F3C969] text-xl shadow-lg">
+        {/* Encabezado Marca */}
+        <div className="mb-6 pb-5 border-b border-[#1E293B]">
+          <div className="flex items-center space-x-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-[#0E2A47] border border-[#F59E0B] text-[#FBBF24] font-black flex items-center justify-center text-xl shadow-md">
               M
             </div>
             <div>
-              <h1 className="font-extrabold text-white text-base leading-tight">SetterMind AI</h1>
-              <p className="text-[11px] text-[#D4AF37] font-medium">Mentes al Mercado</p>
+              <h2 className="text-white font-extrabold text-base leading-tight tracking-wide">SetterMind AI</h2>
+              <p className="text-[10px] text-sky-400 font-semibold uppercase tracking-wider">Mentes al Mercado</p>
             </div>
           </div>
+
+          <Link
+            href="/"
+            className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-semibold transition ${
+              pathname === '/'
+                ? 'bg-sky-600 text-white font-bold shadow-md shadow-sky-600/30'
+                : 'hover:bg-[#131E2E] text-gray-300 hover:text-white'
+            }`}
+          >
+            <span>📊</span>
+            <span>Dashboard Principal</span>
+          </Link>
         </div>
 
-        {/* Links Navigation */}
-        <nav className="p-4 space-y-6">
-          {navigationLinks.map((section, idx) => (
-            <div key={idx}>
-              <p className="px-3 text-[10px] font-bold text-slate-400 tracking-wider uppercase mb-2">
-                {section.group}
+        {/* Fases de Navegación */}
+        <nav className="space-y-6">
+          {navSections.map((section) => (
+            <div key={section.phase}>
+              <p className="text-[10px] font-bold tracking-widest text-gray-400 uppercase px-3 mb-2">
+                {section.phase}
               </p>
-              <div className="space-y-1">
+              <ul className="space-y-1">
                 {section.items.map((item) => {
-                  const isActive = pathname === item.href;
+                  const isActive = pathname === item.path;
                   return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors ${
-                        isActive
-                          ? "bg-[#0E2A47] text-white border border-[#0284C7]/50 shadow-sm"
-                          : "text-slate-400 hover:text-white hover:bg-slate-900/60"
-                      }`}
-                    >
-                      <span className="text-sm">{item.icon}</span>
-                      <span>{item.name}</span>
-                    </Link>
+                    <li key={item.path}>
+                      <Link
+                        href={item.path}
+                        className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-[#132338] text-sky-400 border border-sky-500/40 font-bold shadow-inner'
+                            : 'hover:bg-[#101926] hover:text-white text-gray-300'
+                        }`}
+                      >
+                        <span className="text-sm">{item.icon}</span>
+                        <span>{item.name}</span>
+                      </Link>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
             </div>
           ))}
         </nav>
       </div>
 
-      {/* Footer / Estado de Licencia */}
-      <div className="p-4 border-t border-[#1E2D42]">
-        <div className="bg-[#111A28] border border-[#1E2D42] rounded-lg p-3">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] text-slate-400 font-semibold uppercase">Licencia Hotmart</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      {/* Footer del Menú */}
+      <div className="pt-4 border-t border-[#1E293B] space-y-3">
+        <div className="bg-[#050A10] border border-[#1E293B] rounded-lg p-3">
+          <div className="flex items-center justify-between text-[11px] font-bold text-emerald-400">
+            <span>LICENCIA HOTMART</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           </div>
-          <p className="text-xs font-semibold text-white truncate">Activa • Plan Ilimitado</p>
-          <p className="text-[10px] text-slate-400 mt-1">settermind.mentesalmercado.online</p>
+          <p className="text-[11px] text-gray-300 font-medium mt-0.5">Activa • Plan Ilimitado</p>
         </div>
+
+        <button
+          onClick={logout}
+          className="w-full bg-red-950/40 hover:bg-red-900/60 border border-red-700/50 text-red-200 text-xs font-bold py-2 px-3 rounded-lg transition"
+        >
+          Cerrar Sesión
+        </button>
       </div>
     </aside>
   );
