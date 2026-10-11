@@ -166,3 +166,56 @@ export default function ProspectPage() {
               <h2 className="text-2xl font-bold text-white tracking-tight">Buscar Oportunidades</h2>
               <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
                 Explora publicaciones activas por hashtag o perfil de competencia para calificar prospectos.
+              </p>
+            </div>
+            <form onSubmit={handleProspectSubmit} className="space-y-4">
+              <label htmlFor="profileUsername" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                Hashtag o perfil
+              </label>
+              <input
+                id="profileUsername"
+                type="text"
+                value={profileUsername}
+                onChange={(e) => setProfileUsername(e.target.value)}
+                placeholder="#marketing o nombre de usuario"
+                className="w-full bg-[#0B121E] border border-[#24334A] rounded-xl px-4 py-3 text-sm text-white outline-none"
+              />
+              <button
+                type="submit"
+                disabled={isLoading || !profileUsername.trim()}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold py-3 rounded-xl"
+              >
+                {isLoading ? 'Buscando...' : 'Buscar oportunidades'}
+              </button>
+            </form>
+            {error && <p className="mt-4 text-sm text-amber-300">{error}</p>}
+          </div>
+        </>
+      )}
+
+      {foundPosts.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-white">Publicaciones encontradas</h2>
+            <button onClick={handleNewSearch} className="text-sm text-sky-400 hover:text-sky-300">
+              Nueva búsqueda
+            </button>
+          </div>
+          {foundPosts.map((post: any, index: number) => {
+            const url = post.url || post.post_url || post.permalink;
+            return (
+              <article key={post.id || url || index} className="bg-[#162032] border border-[#24334A] rounded-xl p-5">
+                <p className="text-sm text-slate-300">{post.caption || post.text || 'Publicación sin descripción'}</p>
+                {url && (
+                  <button onClick={() => handleAnalyzeUrl(url)} className="mt-4 text-sm text-sky-400 hover:text-sky-300">
+                    Analizar publicación
+                  </button>
+                )}
+              </article>
+            );
+          })}
+        </section>
+      )}
+    </div>
+  );
+}
