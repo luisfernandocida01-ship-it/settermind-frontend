@@ -64,12 +64,21 @@ export default function ContentFactoryPage() {
 
       {/* Contenedor Principal de la Pestaña Activa */}
       <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-7 md:p-8 shadow-xl">
-        {/* PESTAÑA 1: Director de Highlights */}
+{/* PESTAÑA 1: Director de Highlights */}
         {activeTab === 'highlights' && (
-          <div className="space-y-5">
-            <h2 className="text-xl font-bold text-white tracking-tight border-b border-[#24334A] pb-3">
-              Director de Highlights (Historias Destacadas)
-            </h2>
+          <div className="space-y-6">
+            <div className="border-b border-[#24334A] pb-4">
+              <span className="inline-block bg-sky-500/10 text-sky-400 text-[11px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-sky-500/20 mb-2">
+                Herramienta 1
+              </span>
+              <h2 className="text-xl font-bold text-white tracking-tight">
+                Director de Highlights (Historias Destacadas)
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Estructura las historias destacadas de tu perfil para transmitir autoridad, misión y prueba social en segundos.
+              </p>
+            </div>
+
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
@@ -80,20 +89,20 @@ export default function ContentFactoryPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ej: Luis Fernando"
-                  className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition"
+                  className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                  Tu Misión / Tu "Por qué"
+                  Tu Misión / Tu &quot;Por qué&quot;
                 </label>
                 <textarea
                   rows={3}
                   value={mission}
                   onChange={(e) => setMission(e.target.value)}
                   placeholder="Ej: Ayudar a personas a iniciarse como Setters de alta cualificación sin depender de anuncios caros..."
-                  className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition resize-none"
+                  className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition resize-none"
                 />
               </div>
 
@@ -106,7 +115,7 @@ export default function ContentFactoryPage() {
                   value={methodName}
                   onChange={(e) => setMethodName(e.target.value)}
                   placeholder="Ej: Método Setter Consultivo 3 Fases"
-                  className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition"
+                  className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition"
                 />
               </div>
 
@@ -119,15 +128,16 @@ export default function ContentFactoryPage() {
                   value={resultExample}
                   onChange={(e) => setResultExample(e.target.value)}
                   placeholder="Ej: Alumno cerró 4 llamadas cualificadas en su primera semana..."
-                  className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition"
+                  className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition"
                 />
               </div>
 
               <button
                 type="button"
-                className="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition shadow-lg shadow-sky-950/40 cursor-pointer"
+                className="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition shadow-lg shadow-sky-950/40 cursor-pointer flex items-center justify-center space-x-2"
               >
-                Generar Guion de Highlights con IA
+                <span>🎬</span>
+                <span>Generar Guion de Highlights con IA</span>
               </button>
             </div>
           </div>
