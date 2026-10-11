@@ -1,104 +1,81 @@
-// frontend/src/app/strategies/page.tsx
-
 'use client';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../components/useAuth';
-import Link from 'next/link';
+import { useAuth } from '@/components/useAuth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://settermind-flask-template.onrender.com'; // <-- RECUERDA REEMPLAZAR
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://settermind-flask-template.onrender.com';
 
 export default function StrategiesPage() {
   const { logout } = useAuth();
-  const router = useRouter();frontend/src/components/Sidebar.tsx
+  const router = useRouter();
   const [strategies, setStrategies] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const storedToken = localStorage.getItem('jwt_token');
-    if (!storedToken) { router.push('/login'); return; }
+    if (!storedToken) {
+      router.push('/login');
+      return;
+    }
 
     const fetchStrategies = async () => {
       try {
-        const response = await fetch(`${URL_DEL_BACKEND}/api/strategies`, {
-          headers: { 'Authorization': `Bearer ${storedToken}` }
+        const response = await fetch(`${API_BASE_URL}/api/strategies`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${storedToken}`,
+          },
         });
+
         const data = await response.json();
-        if (!response.ok) { throw new Error(data.detail || 'No se pudo cargar el historial'); }
-        setStrategies(data);
-      } catch (err: any) { setError(err.message); } 
-      finally { setIsLoading(false); }
+        if (!response.ok) {
+          throw new Error(data.error || data.detail || 'No se pudieron cargar las estrategias');
+        }
+
+        setStrategies(Array.isArray(data.strategies) ? data.strategies : Array.isArray(data) ? data : []);
+      } catch (err: any) {
+        setError(err.message || 'Error al conectar con el servidor');
+      } finally {
+        setIsLoading(false);
+      }
     };
+
     fetchStrategies();
   }, [router]);
 
-const useStrategy = (strategy: any) => {
-  // Tomamos el PRIMER hashtag de la lista
-  const firstHashtag = strategy.hashtags[0] || '';
-  // Lo limpiamos de cualquier # que pueda tener
-  const cleanedHashtag = firstHashtag.replace(/#/g, '');
-
-  // Guardamos el hashtag limpio
-  localStorage.setItem('hashtag_to_prospect', cleanedHashtag);
-  
-  router.push('/prospect');
-};
-
   return (
-    <main className="bg-gray-900 text-white min-h-screen flex flex-col items-center p-8">
-      <nav className="w-full max-w-5xl mb-12 flex justify-between items-center">
-        <div className="flex items-center space-x-8">
-          <h1 className="text-3xl font-bold">SetterMind AI</h1>
-          <Link href="/" className="text-gray-300 hover:text-white">Dashboard</Link>
-          <Link href="/conversations" className="text-white font-bold">Bandeja</Link>
-          <Link href="/prospect" className="text-gray-300 hover:text-white">Prospectar</Link>
-          <Link href="/history" className="text-gray-300 hover:text-white">Historial</Link>
-          <Link href="/strategies" className="text-white font-bold">Estrategias</Link>
-          <Link href="/profile-magnet" className="text-gray-300 hover:text-white">Perfil Magnético</Link>
-          <Link href="/content-factory" className="text-gray-300 hover:text-white">Fábrica de Contenidos</Link>
-          <Link href="/resources" className="text-gray-300 hover:text-white">Portafolio</Link>
-        </div>
-        <button onClick={logout} className="bg-red-600 hover:bg-red-700 ...">Cerrar Sesión</button>
-      </nav>
-      <div className="w-full max-w-6xl"> {/* Más ancho para la tabla */}
-        <h1 className="text-4xl font-bold text-center mb-12">Cuaderno de Estrategias</h1>
-        {isLoading ? (<p>Cargando...</p>) 
-         : error ? (<p>{error}</p>) 
-         : strategies.length === 0 ? (<p>Aún no has generado ninguna estrategia.</p>) 
-         : (
-          <div className="bg-gray-800 rounded-lg shadow-lg">
-            <table className="w-full text-left">
-              <thead className="bg-gray-700">
-                <tr>
-                  <th className="p-4">Nicho / Producto</th>
-                  <th className="p-4">Hashtags Sugeridos</th>
-                  <th className="p-4">Palabras Clave Sugeridas</th>
-                  <th className="p-4">Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {strategies.map((strategy) => (
-                  <tr key={strategy.id} className="border-b border-gray-700">
-                    <td className="p-4 align-top w-1/4">{strategy.niche}</td>
-                    <td className="p-4 align-top w-1/4">
-                      {strategy.hashtags.map((tag: string) => `#${tag}`).join(', ')}
-                    </td>
-                    <td className="p-4 align-top w-1/4">
-                      {strategy.keywords.join(', ')}
-                    </td>
-                    <td className="p-4 align-top">
-                      <button onClick={() => useStrategy(strategy)} className="bg-blue-600 hover:bg-blue-700 ...">
-                        Usar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+    <div className="p-8 max-w-6xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-extrabold text-white tracking-tight">Estrategia & Avatar</h1>
+        <p className="text-sm text-gray-400 mt-1">
+          FASE 1 • Define los ángulos de prospección y criterios de avatar consultivo
+        </p>
       </div>
-    </main>
+
+      {isLoading ? (
+        <p className="text-gray-400">Cargando estrategias configuradas...</p>
+      ) : error ? (
+        <div className="bg-red-950/40 border border-red-800 text-red-300 p-4 rounded-lg text-sm">
+          {error}
+        </div>
+      ) : strategies.length === 0 ? (
+        <div className="bg-[#111A28] border border-[#1E2D42] rounded-xl p-8 text-center">
+          <p className="text-gray-300 text-base font-medium">Aún no tienes estrategias registradas.</p>
+          <p className="text-gray-500 text-xs mt-1">Configura tu primer avatar para comenzar a calificar prospectos.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {strategies.map((item, idx) => (
+            <div key={item.id || idx} className="bg-[#111A28] border border-[#1E2D42] rounded-xl p-5">
+              <h3 className="text-white font-semibold text-base mb-2">{item.title || item.name || `Estrategia #${idx + 1}`}</h3>
+              <p className="text-gray-400 text-xs leading-relaxed">{item.description || item.content || 'Sin detalles'}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
