@@ -71,7 +71,7 @@ export default function HistoryPage() {
           <span className="inline-block bg-sky-500/10 text-sky-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-sky-500/20 mb-2">
             Fase 3 • Gestión & Control
           </span>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">
+          <h1 className="text-2xl font-bold text-white tracking-tight">
             Historial de Análisis ({historyItems.length})
           </h1>
           <p className="text-xs text-slate-400 mt-1">

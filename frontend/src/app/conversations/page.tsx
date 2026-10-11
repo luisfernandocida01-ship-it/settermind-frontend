@@ -87,8 +87,8 @@ export default function ConversationsPage() {
           <span className="inline-block bg-sky-500/10 text-sky-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-sky-500/20 mb-2">
             Fase 2 • Ejecución Diaria
           </span>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">
-            Bandeja de Salida ({pendingItems.length} Pendientes)
+          <h1 className="text-2xl font-bold text-white tracking-tight">
+           Bandeja de Salida ({pendingItems.length} Pendientes)
           </h1>
           <p className="text-xs text-slate-400 mt-1">
             Revisa tus comentarios cualificados, copia la respuesta consultiva y contacta al prospecto.

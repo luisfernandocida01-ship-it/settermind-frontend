@@ -1,115 +1,135 @@
-// frontend/src/app/resources/page.tsx
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../components/useAuth';
-import Link from 'next/link';
-
-const URL_DEL_BACKEND = 'https://friendly-space-lamp-69xwwg95q9g7cqj-8001.app.github.dev'; // <-- RECUERDA REEMPLAZAR
 
 export default function ResourcesPage() {
-  const { logout } = useAuth();
   const router = useRouter();
-
-  // Estados
-  const [resources, setResources] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  // Estados para el formulario de nuevo recurso
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [url, setUrl] = useState('');
-  const [resourceType, setResourceType] = useState('Webinar'); // Valor por defecto
-
-  const fetchResources = async () => {
-    setIsLoading(true);
-    const storedToken = localStorage.getItem('jwt_token');
-    try {
-      const response = await fetch(`${URL_DEL_BACKEND}/api/resources`, {
-        headers: { 'Authorization': `Bearer ` },
-      });
-      const data = await response.json();
-      if (!response.ok) { throw new Error(data.detail || 'No se pudo cargar los recursos'); }
-      setResources(data);
-    } catch (err: any) { setError(err.message); } 
-    finally { setIsLoading(false); }
-  };
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('jwt_token');
-    if (!storedToken) { router.push('/login'); return; }
-    fetchResources();
+    const token = localStorage.getItem('jwt_token');
+    if (!token) {
+      router.push('/login');
+    }
   }, [router]);
 
-  const handleAddResource = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const storedToken = localStorage.getItem('jwt_token');
-    try {
-      const response = await fetch(`${URL_DEL_BACKEND}/api/resources`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ` },
-        body: JSON.stringify({ title, description, url, resource_type: resourceType }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || 'No se pudo añadir el recurso');
-      }
-      // Limpiamos el formulario y recargamos la lista
-      setTitle(''); setDescription(''); setUrl('');
-      fetchResources(); 
-    } catch (err: any) {
-      alert(`Error: ${err.message}`);
-    }
-  };
+  const resources = [
+    {
+      id: 'guia-prospeccion',
+      badge: 'Bono 1 • Guía Estratégica',
+      title: 'Manual Maestro: Prospección Consultiva en Frío',
+      description: 'Estructura paso a paso para iniciar conversaciones en Instagram sin parecer spam ni sonar invasivo.',
+      tag: 'PDF / Guía',
+      actionType: 'download',
+      linkText: 'Descargar Manual (PDF)',
+      url: '#',
+    },
+    {
+      id: 'arsenal-scripts',
+      badge: 'Bono 2 • Plantillas',
+      title: 'Pack de 25 Guiones de Rompehielos & Seguimiento',
+      description: 'Copys probados para romper el hielo a partir de historias, posts populares y encuestas en historias.',
+      tag: 'Plantillas Copiables',
+      actionType: 'copy',
+      copyContent: 'Hola [Nombre], vi tu publicación sobre [Tema] y me llamó mucho la atención tu enfoque sobre [Punto clave]. ¿Cuánto tiempo llevas implementando esa metodología?',
+      linkText: 'Copiar Script Principal',
+    },
+    {
+      id: 'calculadora-metricas',
+      badge: 'Bono 3 • Herramienta',
+      title: 'Calculadora de Métricas del Setter',
+      description: 'Determina cuántos mensajes, respuestas e interacciones diarias necesitas para cumplir tu meta de llamadas.',
+      tag: 'Hoja de Cálculo',
+      actionType: 'download',
+      linkText: 'Abrir Hoja de Trabajo',
+      url: '#',
+    },
+    {
+      id: 'comunidad-soporte',
+      badge: 'Exclusivo • Comunidad',
+      title: 'Canal de Feedback & Casos de Estudio',
+      description: 'Accede al canal privado donde analizamos capturas de pantalla de chats reales y resolvemos objeciones.',
+      tag: 'Comunidad VIP',
+      actionType: 'external',
+      linkText: 'Unirme al Canal Privado →',
+      url: '#',
+    },
+  ];
 
-  const handleCopyUrl = (urlToCopy: string) => {
-    navigator.clipboard.writeText(urlToCopy);
-    alert('¡Enlace copiado al portapapeles!');
+  const handleCopy = (content: string, id: string) => {
+    navigator.clipboard.writeText(content);
+    setCopiedKey(id);
+    setTimeout(() => setCopiedKey(null), 2000);
   };
 
   return (
-    <main className="bg-gray-900 text-white min-h-screen flex flex-col items-center p-8">
-      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-12">
-        {/* Columna Izquierda: Lista de Recursos */}
-        <div className="lg:col-span-2">
-          <h1 className="text-4xl font-bold mb-8">Portafolio de Recursos</h1>
-          {isLoading ? (<p>Cargando...</p>)
-           : error ? (<p className="text-red-500">{error}</p>)
-           : resources.length === 0 ? (<p>Aún no tienes recursos. ¡Añade el primero!</p>)
-           : (
-            <div className="bg-gray-800 rounded-lg shadow-lg">
-              <table className="w-full text-left">
-                <thead className="bg-gray-700"><tr><th className="p-4">Título</th><th className="p-4">Tipo</th><th className="p-4">Enlace</th><th className="p-4">Acción</th></tr></thead>
-                <tbody>
-                  {resources.map((res) => (
-                    <tr key={res.id} className="border-b border-gray-700">
-                      <td className="p-4">{res.title}</td>
-                      <td className="p-4"><span className={`px-2 py-1 text-xs rounded-full ${res.resource_type === 'CPL' ? 'bg-purple-600' : 'bg-green-600'}`}>{res.resource_type}</span></td>
-                      <td className="p-4 truncate max-w-xs">{res.url}</td>
-                      <td className="p-4"><button onClick={() => handleCopyUrl(res.url)} className="bg-blue-600 ...">Copiar</button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-           )}
-        </div>
-        
-        {/* Columna Derecha: Añadir Nuevo Recurso */}
-        <div>
-          <h2 className="text-2xl font-bold mb-6">Añadir Nuevo Recurso</h2>
-          <form onSubmit={handleAddResource} className="bg-gray-800 p-6 rounded-lg shadow-lg space-y-4">
-            <div><label htmlFor="title">Título</label><input id="title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="bg-gray-700 ... w-full p-2.5 mt-1"/></div>
-            <div><label htmlFor="url">URL (Enlace)</label><input id="url" type="text" value={url} onChange={(e) => setUrl(e.target.value)} required className="bg-gray-700 ... w-full p-2.5 mt-1"/></div>
-            <div><label htmlFor="description">Descripción (Opcional)</label><textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="bg-gray-700 ... w-full p-2.5 mt-1"></textarea></div>
-            <div><label htmlFor="resourceType">Tipo de Recurso</label><select id="resourceType" value={resourceType} onChange={(e) => setResourceType(e.target.value)} className="bg-gray-700 ... w-full p-2.5 mt-1"><option>Webinar</option><option>CPL</option></select></div>
-            <button type="submit" className="w-full bg-indigo-600 ...">Añadir al Portafolio</button>
-          </form>
-        </div>
+    <div className="w-full max-w-4xl mx-auto space-y-8 py-2">
+      {/* Encabezado Homologado */}
+      <div className="border-b border-[#24334A] pb-6">
+        <span className="inline-block bg-sky-500/10 text-sky-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-sky-500/20 mb-2">
+          Fase 3 • Gestión & Control
+        </span>
+        <h1 className="text-2xl font-bold text-white tracking-tight">
+          Recursos, Plantillas & Bonos Exclusivos
+        </h1>
+        <p className="text-xs text-slate-400 mt-1">
+          Catálogo complementario con guías, plantillas de mensaje y activos para acelerar tus resultados como setter.
+        </p>
       </div>
-    </main>
+
+      {/* Grid de Recursos */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {resources.map((item) => (
+          <div
+            key={item.id}
+            className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 shadow-xl flex flex-col justify-between space-y-4 transition hover:border-sky-500/40"
+          >
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-sky-400 uppercase tracking-wider">
+                  {item.badge}
+                </span>
+                <span className="bg-[#0B121E] text-slate-300 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-[#24334A]">
+                  {item.tag}
+                </span>
+              </div>
+              <h2 className="text-base font-bold text-white leading-snug">
+                {item.title}
+              </h2>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                {item.description}
+              </p>
+            </div>
+
+            <div className="pt-2">
+              {item.actionType === 'copy' ? (
+                <button
+                  onClick={() => handleCopy(item.copyContent || '', item.id)}
+                  className={`w-full text-xs font-bold py-2.5 px-4 rounded-xl transition cursor-pointer flex items-center justify-center space-x-2 ${
+                    copiedKey === item.id
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-[#1E293B] hover:bg-[#2A3B54] text-slate-200 border border-[#334155]'
+                  }`}
+                >
+                  <span>📋</span>
+                  <span>{copiedKey === item.id ? '✓ Guion Copiado' : item.linkText}</span>
+                </button>
+              ) : (
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition shadow-md shadow-sky-950/40 flex items-center justify-center space-x-2 text-center"
+                >
+                  <span>📥</span>
+                  <span>{item.linkText}</span>
+                </a>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
