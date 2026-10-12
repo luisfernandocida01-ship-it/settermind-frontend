@@ -134,13 +134,28 @@ export default function Dashboard() {
   };
 
   // PASO 3: Guardar en la bandeja de salida (Outbox)
-  const handleAddToOutbox = async (leadIndex: number, lead: any) => {
+// PASO 3: Guardar en la bandeja de salida (Outbox)
+const handleAddToOutbox = async (leadIndex: number, lead: any) => {
     const token = localStorage.getItem('jwt_token');
-    const opener = selectedOpeners[leadIndex] || lead.suggested_openers?.[0] || 'Hola, ¿cómo estás?';
-    const authorUsername = lead.author || lead.username || lead.user || postDetails?.ownerUsername || 'prospecto';
+    
+    // Asegurar que no vayan vacíos ni nulos
+    const opener = (selectedOpeners[leadIndex] || lead.suggested_openers?.[0] || 'Hola, ¿cómo estás?').trim();
+    const authorUsername = (lead.author || lead.username || lead.user || 'prospecto').trim();
+    const commentText = (lead.comment_text || lead.comment || 'Comentario de interés').trim();
+    const painText = (lead.pain_point_identified || 'Sin dolor registrado').trim();
+    const scoreVal = lead.potential_score ? String(lead.potential_score) : '7';
 
     setSavingLeadIndex(leadIndex);
     setError(null);
+
+    const payload = {
+      post_url: postUrl || 'https://instagram.com',
+      prospect_username: authorUsername,
+      prospect_comment: commentText,
+      selected_opener: opener,
+      identified_pain: painText,
+      score: scoreVal,
+    };
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/outbox`, {
@@ -149,26 +164,19 @@ export default function Dashboard() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          post_url: postUrl,
-          prospect_username: authorUsername,
-          prospect_comment: lead.comment_text || lead.comment || 'Sin comentario',
-          selected_opener: opener,
-          identified_pain: lead.pain_point_identified || 'Sin dolor especificado',
-          score: lead.potential_score || 0,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'No se pudo guardar en la bandeja de salida');
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.detail || 'No se pudo guardar en la bandeja de salida');
       }
 
       setSavedLeads((prev) => ({ ...prev, [leadIndex]: true }));
       setOutboxSuccess(`¡Lead #${leadIndex + 1} guardado correctamente en la Bandeja de Salida!`);
       setTimeout(() => setOutboxSuccess(null), 3500);
     } catch (err: any) {
-      setError(err.message || 'Error al guardar lead en outbox');
+      setError(`Error al guardar: ${err.message}`);
     } finally {
       setSavingLeadIndex(null);
     }

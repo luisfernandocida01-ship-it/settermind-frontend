@@ -28,55 +28,56 @@ export default function ConversationsPage() {
     const token = localStorage.getItem('jwt_token');
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/conversations`, {
+      const response = await fetch(`${API_BASE_URL}/api/outbox`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error('No se pudieron cargar los mensajes del pipeline.');
+        throw new Error('No se pudieron cargar los mensajes de la Bandeja de Salida.');
       }
 
       const data = await response.json();
-      setPendingItems(Array.isArray(data) ? data : data.conversations || []);
+      setPendingItems(Array.isArray(data) ? data : []);
     } catch (err: any) {
-      // Fallback a localStorage si el backend aún no persiste el pipeline
-      const stored = localStorage.getItem('saved_conversations');
-      if (stored) {
-        try {
-          setPendingItems(JSON.parse(stored));
-        } catch (e) {
-          setError(err.message || 'Error al cargar mensajes pendientes.');
-        }
-      } else {
-        setError(null);
-        setPendingItems([]);
-      }
+      setError(err.message || 'Error al conectar con la bandeja de salida.');
+      setPendingItems([]);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleCopyAndOpen = (item: any) => {
-    const textToCopy = item.suggested_response || item.response || item.message || '';
+    const textToCopy = item.selected_opener || item.suggested_response || item.response || '';
     if (textToCopy) {
       navigator.clipboard.writeText(textToCopy);
-      setCopiedId(item.id || item.username);
+      setCopiedId(item.id);
       setTimeout(() => setCopiedId(null), 2500);
     }
 
-    if (item.url || item.post_url) {
-      window.open(item.url || item.post_url, '_blank');
-    } else if (item.username) {
-      window.open(`https://www.instagram.com/${item.username.replace('@', '')}/`, '_blank');
+    const username = item.prospect_username || item.username;
+    if (username && username !== 'prospecto') {
+      window.open(`https://www.instagram.com/${username.replace('@', '')}/`, '_blank');
+    } else if (item.post_url) {
+      window.open(item.post_url, '_blank');
     }
   };
 
-  const handleMarkDone = (id: any) => {
-    const updated = pendingItems.filter((i) => (i.id || i.username) !== id);
-    setPendingItems(updated);
-    localStorage.setItem('saved_conversations', JSON.stringify(updated));
+  const handleMarkDone = async (id: any) => {
+    const token = localStorage.getItem('jwt_token');
+    try {
+      await fetch(`${API_BASE_URL}/api/outbox/${id}/sent`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+    } catch (e) {
+      console.error('Error al actualizar estado en backend:', e);
+    }
+
+    setPendingItems((prev) => prev.filter((i) => i.id !== id));
   };
 
   return (
@@ -88,18 +89,19 @@ export default function ConversationsPage() {
             Fase 2 • Ejecución Diaria
           </span>
           <h1 className="text-2xl font-bold text-white tracking-tight">
-           Bandeja de Salida ({pendingItems.length} Pendientes)
+            Bandeja de Salida ({pendingItems.length} Pendientes)
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Revisa tus comentarios cualificados, copia la respuesta consultiva y contacta al prospecto.
+            Revisa tus prospectos cualificados, copia la apertura sugerida y contáctalos de inmediato.
           </p>
         </div>
 
         <button
           onClick={fetchConversations}
+          disabled={isLoading}
           className="self-start md:self-auto bg-[#162032] hover:bg-[#1E293B] text-slate-300 border border-[#24334A] text-xs font-bold py-2.5 px-4 rounded-xl transition cursor-pointer"
         >
-          ↻ Actualizar Bandeja
+          {isLoading ? 'Cargando...' : '↻ Actualizar Bandeja'}
         </button>
       </div>
 
@@ -109,101 +111,76 @@ export default function ConversationsPage() {
         </div>
       )}
 
-      {/* Estado Cargando */}
-      {isLoading && (
-        <div className="text-center py-16 text-slate-400 text-sm">
-          <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-          Cargando oportunidades del pipeline...
+      {/* Lista de Leads en Bandeja */}
+      {pendingItems.length === 0 && !isLoading ? (
+        <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-12 text-center">
+          <p className="text-slate-400 text-sm">No tienes mensajes pendientes en la bandeja de salida.</p>
+          <p className="text-xs text-slate-500 mt-1">Analiza una publicación en el Dashboard y agrega oportunidades aquí.</p>
         </div>
-      )}
-
-      {/* Estado Vacío */}
-      {!isLoading && pendingItems.length === 0 && (
-        <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-12 text-center shadow-xl space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-[#0B121E] border border-[#24334A] flex items-center justify-center text-2xl mx-auto text-sky-400">
-            📬
-          </div>
-          <h3 className="text-lg font-bold text-white">No tienes mensajes pendientes</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            Dirígete a <strong className="text-sky-400">Dashboard Principal</strong> o <strong className="text-sky-400">Radar de Prospectos</strong> para analizar una publicación y añadir prospectos a tu bandeja de salida.
-          </p>
-          <button
-            onClick={() => router.push('/')}
-            className="bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold py-2.5 px-5 rounded-xl transition shadow-lg shadow-sky-950/40 cursor-pointer"
-          >
-            Ir a Cualificar Prospectos →
-          </button>
-        </div>
-      )}
-
-      {/* Lista de Mensajes Pendientes */}
-      {!isLoading && pendingItems.length > 0 && (
-        <div className="space-y-6">
-          {pendingItems.map((item, idx) => {
-            const itemKey = item.id || item.username || idx;
-            const isCopied = copiedId === itemKey;
-
-            return (
-              <div
-                key={itemKey}
-                className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 shadow-xl space-y-5 transition hover:border-sky-500/40"
-              >
-                {/* Cabecera del Prospecto */}
-                <div className="flex items-center justify-between border-b border-[#24334A] pb-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-9 h-9 rounded-full bg-[#0B121E] border border-sky-500/40 flex items-center justify-center text-sky-400 font-bold text-xs">
-                      @
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-white text-sm">
-                        {item.username?.startsWith('@') ? item.username : `@${item.username || 'Usuario Anónimo'}`}
-                      </h3>
-                      {item.author && item.author !== item.username && (
-                        <p className="text-[11px] text-slate-400">{item.author}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <span className="bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[11px] font-bold px-3 py-1 rounded-full">
-                    {item.score ? `Score: ${item.score}/10` : 'Calificado'}
+      ) : (
+        <div className="space-y-4">
+          {pendingItems.map((item) => (
+            <div key={item.id} className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 space-y-4">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-2">
+                  <span className="w-8 h-8 rounded-full bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold text-xs border border-sky-500/20">
+                    @
                   </span>
+                  <p className="text-sm font-bold text-white">
+                    @{item.prospect_username || 'prospecto'}
+                  </p>
                 </div>
-
-                {/* Comentario del Prospecto */}
-                <div className="bg-[#0B121E] border border-[#24334A]/60 rounded-xl p-4 text-xs text-slate-300 italic leading-relaxed">
-                  &ldquo;{item.comment_text || item.text || item.comment || 'Comentario sin texto registrado'}&rdquo;
-                </div>
-
-                {/* Respuesta Consultiva Generada */}
-                <div className="space-y-1.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    Respuesta Consultiva Sugerida:
+                {item.score && (
+                  <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-bold px-3 py-1 rounded-full">
+                    Score: {item.score}/10
                   </span>
-                  <div className="bg-[#0E1E33] border border-[#1E3A5F] rounded-xl p-4 text-xs text-sky-200 leading-relaxed font-sans">
-                    {item.suggested_response || item.response || item.message || 'Sin respuesta sugerida.'}
-                  </div>
+                )}
+              </div>
+
+              {/* Comentario Original */}
+              <div className="bg-[#0B121E] border border-[#24334A] p-3.5 rounded-xl">
+                <p className="text-xs text-slate-400 font-semibold mb-1">Comentario original:</p>
+                <p className="text-sm text-slate-200 italic leading-relaxed">
+                  "{item.prospect_comment || 'Sin comentario registrado'}"
+                </p>
+              </div>
+
+              {/* Dolor si existe */}
+              {item.identified_pain && (
+                <div className="bg-sky-950/20 border border-sky-800/30 p-3 rounded-xl">
+                  <p className="text-xs text-sky-400 font-semibold mb-0.5">Dolor detectado:</p>
+                  <p className="text-xs text-slate-300">{item.identified_pain}</p>
                 </div>
+              )}
 
-                {/* Botones de Acción */}
-                <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-                  <button
-                    onClick={() => handleCopyAndOpen(item)}
-                    className="w-full sm:flex-1 bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 px-5 rounded-xl text-xs transition shadow-lg shadow-sky-950/40 flex items-center justify-center space-x-2 cursor-pointer"
-                  >
-                    <span>🚀</span>
-                    <span>{isCopied ? '¡Copiado! Abriendo destino...' : 'Enviar (Abrir y Copiar)'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleMarkDone(itemKey)}
-                    className="w-full sm:w-auto bg-[#1E293B] hover:bg-emerald-950/60 hover:text-emerald-300 hover:border-emerald-700/60 text-slate-300 font-semibold py-3 px-4 rounded-xl text-xs transition border border-[#334155] cursor-pointer"
-                  >
-                    ✓ Marcar Enviado
-                  </button>
+              {/* Opener sugerido */}
+              <div>
+                <p className="text-xs text-slate-400 font-semibold mb-1">Respuesta / Opener seleccionado:</p>
+                <div className="p-3.5 bg-[#0B121E] border border-[#24334A] rounded-xl text-xs text-slate-200 leading-relaxed">
+                  {item.selected_opener || 'Sin respuesta sugerida.'}
                 </div>
               </div>
-            );
-          })}
+
+              {/* Acciones */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => handleCopyAndOpen(item)}
+                  className="flex-1 bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center space-x-2 cursor-pointer shadow-md"
+                >
+                  <span>{copiedId === item.id ? '✓ ¡Copiado al Portapapeles!' : '🚀 Copiar Opener y Abrir'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleMarkDone(item.id)}
+                  className="bg-[#1E293B] hover:bg-[#334155] text-slate-300 border border-[#24334A] font-bold py-2.5 px-4 rounded-xl text-xs transition cursor-pointer"
+                >
+                  ✓ Marcar Enviado
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
