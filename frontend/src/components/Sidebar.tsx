@@ -28,11 +28,12 @@ export default function Sidebar() {
         { name: '5. Pipeline & Mensajes', path: '/conversations', icon: '🚀' },
       ],
     },
-    {
+{
       phase: 'FASE 3: GESTIÓN & CONTROL',
       items: [
         { name: '6. Historial de Análisis', path: '/history', icon: '📋' },
-        { name: '7. Recursos & Bonos', path: '/resources', icon: '📚' },
+        { name: '7. Productos & Hotlinks', path: '/resources', icon: '🔗' },
+        { name: '8. Recursos & Bonos', path: '/bonuses', icon: '🎁' },
       ],
     },
   ];
