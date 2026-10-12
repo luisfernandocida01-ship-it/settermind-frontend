@@ -24,10 +24,12 @@ export default function Dashboard() {
   const [niche, setNiche] = useState('');
   const [avatar, setAvatar] = useState('');
 
-  // Paso 3: Resultados de prospectos y análisis
+  // Paso 3: Leads y selección de openers
   const [leads, setLeads] = useState<any[]>([]);
   const [summary, setSummary] = useState<string>('');
   const [selectedOpeners, setSelectedOpeners] = useState<{ [key: number]: string }>({});
+  const [savingLeadIndex, setSavingLeadIndex] = useState<number | null>(null);
+  const [savedLeads, setSavedLeads] = useState<{ [key: number]: boolean }>({});
   const [outboxSuccess, setOutboxSuccess] = useState<string | null>(null);
 
   useEffect(() => {
@@ -70,6 +72,7 @@ export default function Dashboard() {
 
       setPostDetails(data.post || data);
       setProfileAnalysis(data.profile || null);
+
       if (data.profile?.niche || data.niche) {
         setNiche(typeof data.profile?.niche === 'string' ? data.profile.niche : data.niche || '');
       }
@@ -109,8 +112,19 @@ export default function Dashboard() {
         throw new Error(data.detail || data.error || 'Error al analizar comentarios');
       }
 
-      setLeads(data.leads || []);
+      const receivedLeads = data.leads || [];
+      setLeads(receivedLeads);
       setSummary(data.summary || '');
+
+      // Inicializar el opener seleccionado por defecto (el primero de cada lead)
+      const initialOpeners: { [key: number]: string } = {};
+      receivedLeads.forEach((lead: any, idx: number) => {
+        if (lead.suggested_openers && lead.suggested_openers.length > 0) {
+          initialOpeners[idx] = lead.suggested_openers[0];
+        }
+      });
+      setSelectedOpeners(initialOpeners);
+
       setStep(3);
     } catch (err: any) {
       setError(err.message || 'Error al generar análisis');
@@ -122,7 +136,11 @@ export default function Dashboard() {
   // PASO 3: Guardar en la bandeja de salida (Outbox)
   const handleAddToOutbox = async (leadIndex: number, lead: any) => {
     const token = localStorage.getItem('jwt_token');
-    const opener = selectedOpeners[leadIndex] || (lead.suggested_openers?.[0] || '');
+    const opener = selectedOpeners[leadIndex] || lead.suggested_openers?.[0] || 'Hola, ¿cómo estás?';
+    const authorUsername = lead.author || lead.username || lead.user || postDetails?.ownerUsername || 'prospecto';
+
+    setSavingLeadIndex(leadIndex);
+    setError(null);
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/outbox`, {
@@ -133,22 +151,26 @@ export default function Dashboard() {
         },
         body: JSON.stringify({
           post_url: postUrl,
-          prospect_username: lead.author || 'prospecto',
-          prospect_comment: lead.comment_text,
+          prospect_username: authorUsername,
+          prospect_comment: lead.comment_text || lead.comment || 'Sin comentario',
           selected_opener: opener,
-          identified_pain: lead.pain_point_identified,
+          identified_pain: lead.pain_point_identified || 'Sin dolor especificado',
           score: lead.potential_score || 0,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('No se pudo guardar en la bandeja de salida');
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'No se pudo guardar en la bandeja de salida');
       }
 
-      setOutboxSuccess(`¡Lead #${leadIndex + 1} guardado en la Bandeja de Salida!`);
-      setTimeout(() => setOutboxSuccess(null), 3000);
+      setSavedLeads((prev) => ({ ...prev, [leadIndex]: true }));
+      setOutboxSuccess(`¡Lead #${leadIndex + 1} guardado correctamente en la Bandeja de Salida!`);
+      setTimeout(() => setOutboxSuccess(null), 3500);
     } catch (err: any) {
       setError(err.message || 'Error al guardar lead en outbox');
+    } finally {
+      setSavingLeadIndex(null);
     }
   };
 
@@ -157,6 +179,8 @@ export default function Dashboard() {
     setPostDetails(null);
     setProfileAnalysis(null);
     setLeads([]);
+    setSelectedOpeners({});
+    setSavedLeads({});
     setSummary('');
     setPostUrl('');
     setError(null);
@@ -226,6 +250,7 @@ export default function Dashboard() {
 
           <PostContextDisplay postDetails={postDetails} profileAnalysis={profileAnalysis} />
 
+          {/* Formulario único a lo ancho para Contexto de Producto */}
           <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 space-y-4">
             <h2 className="text-sm font-bold text-white uppercase tracking-wider">Contexto de tu Producto / Oferta</h2>
             <div className="space-y-3">
@@ -235,17 +260,17 @@ export default function Dashboard() {
                   type="text"
                   value={niche}
                   onChange={(e) => setNiche(e.target.value)}
-                  placeholder="Ej: Academia de Marketing Digital, High-Ticket Setting..."
+                  placeholder="Ej: Creación de contenido y marketing digital"
                   className="w-full bg-[#0B121E] border border-[#24334A] rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-sky-500"
                 />
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Tu Cliente Ideal (Avatar):</label>
                 <textarea
-                  rows={2}
+                  rows={3}
                   value={avatar}
                   onChange={(e) => setAvatar(e.target.value)}
-                  placeholder="Ej: Emprendedores que buscan herramientas de IA para escalar ventas..."
+                  placeholder="Ej: Emprendedores, dueños de pequeñas empresas y creadores de contenido..."
                   className="w-full bg-[#0B121E] border border-[#24334A] rounded-xl px-4 py-2 text-sm text-white outline-none focus:border-sky-500"
                 />
               </div>
@@ -263,7 +288,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* PASO 3: Resultados de Leads y Bandeja de Salida */}
+      {/* PASO 3: Oportunidades Identificadas */}
       {step === 3 && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
@@ -282,54 +307,72 @@ export default function Dashboard() {
           </div>
 
           <div className="space-y-4">
-            {leads.map((lead, idx) => (
-              <div key={idx} className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 space-y-4">
-                <div className="flex justify-between items-start">
-                  <div className="bg-[#0B121E] border border-[#24334A] p-3 rounded-xl max-w-xl">
-                    <p className="text-xs text-slate-400 font-semibold mb-1">Comentario del prospecto:</p>
-                    <p className="text-sm text-slate-200 italic">"{lead.comment_text}"</p>
+            {leads.map((lead, idx) => {
+              const currentSelectedOpener = selectedOpeners[idx] || lead.suggested_openers?.[0] || '';
+              const isSaved = !!savedLeads[idx];
+              const isSaving = savingLeadIndex === idx;
+
+              return (
+                <div key={idx} className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div className="bg-[#0B121E] border border-[#24334A] p-3 rounded-xl max-w-xl">
+                      <p className="text-xs text-slate-400 font-semibold mb-1">Comentario del prospecto:</p>
+                      <p className="text-sm text-slate-200 italic">"{lead.comment_text}"</p>
+                    </div>
+                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-bold px-3 py-1 rounded-full">
+                      Score: {lead.potential_score}/10
+                    </span>
                   </div>
-                  <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-bold px-3 py-1 rounded-full">
-                    Score: {lead.potential_score}/10
-                  </span>
-                </div>
 
-                <div className="bg-sky-950/20 border border-sky-800/30 p-3 rounded-xl">
-                  <p className="text-xs text-sky-400 font-semibold mb-1">Dolor identificado:</p>
-                  <p className="text-xs text-slate-300">{lead.pain_point_identified}</p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-slate-400 font-semibold mb-2">Selecciona un mensaje de apertura (Opener):</p>
-                  <div className="space-y-2">
-                    {lead.suggested_openers?.map((opener: string, oIdx: number) => {
-                      const isSelected = (selectedOpeners[idx] || lead.suggested_openers[0]) === opener;
-                      return (
-                        <div
-                          key={oIdx}
-                          onClick={() => setSelectedOpeners({ ...selectedOpeners, [idx]: opener })}
-                          className={`p-3 rounded-xl border text-xs cursor-pointer transition ${
-                            isSelected
-                              ? 'bg-sky-600/20 border-sky-500 text-white'
-                              : 'bg-[#0B121E] border-[#24334A] text-slate-300 hover:border-slate-600'
-                          }`}
-                        >
-                          {opener}
-                        </div>
-                      );
-                    })}
+                  <div className="bg-sky-950/20 border border-sky-800/30 p-3 rounded-xl">
+                    <p className="text-xs text-sky-400 font-semibold mb-1">Dolor identificado:</p>
+                    <p className="text-xs text-slate-300">{lead.pain_point_identified}</p>
                   </div>
-                </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleAddToOutbox(idx, lead)}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center space-x-2 cursor-pointer shadow-md"
-                >
-                  <span>📥 Agregar a Bandeja de Salida</span>
-                </button>
-              </div>
-            ))}
+                  <div>
+                    <p className="text-xs text-slate-400 font-semibold mb-2">Selecciona un mensaje de apertura (Opener):</p>
+                    <div className="space-y-2">
+                      {lead.suggested_openers?.map((opener: string, oIdx: number) => {
+                        const isSelected = currentSelectedOpener === opener;
+                        return (
+                          <div
+                            key={oIdx}
+                            onClick={() => setSelectedOpeners((prev) => ({ ...prev, [idx]: opener }))}
+                            className={`p-3 rounded-xl border text-xs cursor-pointer transition flex items-start space-x-2 ${
+                              isSelected
+                                ? 'bg-sky-600/20 border-sky-500 text-white shadow-sm'
+                                : 'bg-[#0B121E] border-[#24334A] text-slate-300 hover:border-slate-600'
+                            }`}
+                          >
+                            <span className={`inline-block w-3 h-3 rounded-full mt-0.5 shrink-0 ${isSelected ? 'bg-sky-400 ring-2 ring-sky-500/40' : 'border border-slate-600'}`} />
+                            <span className="flex-1 leading-relaxed">{opener}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAddToOutbox(idx, lead)}
+                    disabled={isSaving || isSaved}
+                    className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 shadow-md cursor-pointer ${
+                      isSaved
+                        ? 'bg-slate-700 text-slate-300 cursor-not-allowed'
+                        : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                    }`}
+                  >
+                    <span>
+                      {isSaving
+                        ? 'Guardando...'
+                        : isSaved
+                        ? '✓ Guardado en Bandeja de Salida'
+                        : '📥 Agregar a Bandeja de Salida'}
+                    </span>
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
