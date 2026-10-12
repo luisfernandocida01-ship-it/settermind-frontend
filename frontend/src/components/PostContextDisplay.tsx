@@ -18,8 +18,11 @@ interface Avatar {
 }
 
 interface PostDetails {
+  ownerUsername?: string;
   user?: { username?: string };
   caption?: string;
+  likesCount?: number;
+  commentsCount?: number;
 }
 
 interface ProfileAnalysis {
@@ -108,8 +111,9 @@ export function PostContextDisplay({ postDetails, profileAnalysis, onAnalyze, on
           </div>
           <div className="bg-gray-800 p-6 rounded-lg">
             <h2 className="text-xl font-bold mb-2">Contexto del Post</h2>
-            <p className="text-gray-400 text-sm mb-4">@{postDetails?.user?.username || 'Usuario no encontrado'}</p>
-            <p className="text-gray-300 italic line-clamp-4">"{postDetails?.caption || 'Descripción no disponible.'}"</p>
+            {/* Reemplaza donde lee el nombre de usuario y descripción por: */}
+            const username = postDetails?.ownerUsername || postDetails?.user?.username || 'Usuario no encontrado';
+            const caption = postDetails?.caption || 'Descripción no disponible.';
           </div>
         </div>
         

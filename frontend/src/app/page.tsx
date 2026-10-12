@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/useAuth';
 import { PostContextDisplay } from '@/components/PostContextDisplay';
-import OpportunityFilter from '@/components/OpportunityFilter';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://settermind-flask-template.onrender.com';
 
@@ -13,13 +12,23 @@ export default function Dashboard() {
   const router = useRouter();
 
   const [postUrl, setPostUrl] = useState('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [isAnalyzingLeads, setIsAnalyzingLeads] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [step, setStep] = useState(1);
   const [postDetails, setPostDetails] = useState<any>(null);
   const [profileAnalysis, setProfileAnalysis] = useState<any>(null);
-  const [comments, setComments] = useState<any[]>([]);
+
+  // Paso 2: Datos de contexto ingresados por el usuario
+  const [niche, setNiche] = useState('');
+  const [avatar, setAvatar] = useState('');
+
+  // Paso 3: Resultados de prospectos y análisis
+  const [leads, setLeads] = useState<any[]>([]);
+  const [summary, setSummary] = useState<string>('');
+  const [selectedOpeners, setSelectedOpeners] = useState<{ [key: number]: string }>({});
+  const [outboxSuccess, setOutboxSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('jwt_token');
@@ -35,17 +44,17 @@ export default function Dashboard() {
     }
   }, [router]);
 
+  // PASO 1: Obtener detalles del post y perfil
   const handleUrlSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!postUrl.trim()) return;
 
-    setIsAnalyzing(true);
+    setIsLoadingDetails(true);
     setError(null);
-
     const token = localStorage.getItem('jwt_token');
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/analyze-post`, {
+      const response = await fetch(`${API_BASE_URL}/api/get-post-details`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -55,19 +64,91 @@ export default function Dashboard() {
       });
 
       const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || data.detail || 'Error al analizar la publicación');
+        throw new Error(data.detail || data.error || 'Error al obtener detalles del post');
       }
 
-      setPostDetails(data.post_details || data);
-      setProfileAnalysis(data.profile_analysis || null);
-      setComments(Array.isArray(data.comments) ? data.comments : []);
+      setPostDetails(data.post || data);
+      setProfileAnalysis(data.profile || null);
+      if (data.profile?.niche || data.niche) {
+        setNiche(typeof data.profile?.niche === 'string' ? data.profile.niche : data.niche || '');
+      }
+      if (data.profile?.avatar || data.avatar) {
+        setAvatar(typeof data.profile?.avatar === 'string' ? data.profile.avatar : data.avatar || '');
+      }
       setStep(2);
     } catch (err: any) {
       setError(err.message || 'Error de conexión con el servidor');
     } finally {
-      setIsAnalyzing(false);
+      setIsLoadingDetails(false);
+    }
+  };
+
+  // PASO 2: Analizar congruencia y extraer prospectos con IA
+  const handleAnalyzeCongruence = async () => {
+    setIsAnalyzingLeads(true);
+    setError(null);
+    const token = localStorage.getItem('jwt_token');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/analyze-post`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          post_url: postUrl.trim(),
+          niche: niche.trim(),
+          avatar: avatar.trim(),
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || data.error || 'Error al analizar comentarios');
+      }
+
+      setLeads(data.leads || []);
+      setSummary(data.summary || '');
+      setStep(3);
+    } catch (err: any) {
+      setError(err.message || 'Error al generar análisis');
+    } finally {
+      setIsAnalyzingLeads(false);
+    }
+  };
+
+  // PASO 3: Guardar en la bandeja de salida (Outbox)
+  const handleAddToOutbox = async (leadIndex: number, lead: any) => {
+    const token = localStorage.getItem('jwt_token');
+    const opener = selectedOpeners[leadIndex] || (lead.suggested_openers?.[0] || '');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/outbox`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          post_url: postUrl,
+          prospect_username: lead.author || 'prospecto',
+          prospect_comment: lead.comment_text,
+          selected_opener: opener,
+          identified_pain: lead.pain_point_identified,
+          score: lead.potential_score || 0,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('No se pudo guardar en la bandeja de salida');
+      }
+
+      setOutboxSuccess(`¡Lead #${leadIndex + 1} guardado en la Bandeja de Salida!`);
+      setTimeout(() => setOutboxSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Error al guardar lead en outbox');
     }
   };
 
@@ -75,14 +156,27 @@ export default function Dashboard() {
     setStep(1);
     setPostDetails(null);
     setProfileAnalysis(null);
-    setComments([]);
+    setLeads([]);
+    setSummary('');
     setPostUrl('');
     setError(null);
   };
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8">
-      {/* Paso 1: Input URL */}
+      {error && (
+        <div className="bg-amber-950/40 border border-amber-700/60 text-amber-300 p-3 rounded-xl text-xs text-center">
+          {error}
+        </div>
+      )}
+
+      {outboxSuccess && (
+        <div className="bg-emerald-950/40 border border-emerald-700/60 text-emerald-300 p-3 rounded-xl text-xs text-center">
+          {outboxSuccess}
+        </div>
+      )}
+
+      {/* PASO 1: Formulario URL */}
       {step === 1 && (
         <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-8 shadow-xl max-w-2xl mx-auto">
           <div className="text-center mb-6">
@@ -91,45 +185,36 @@ export default function Dashboard() {
             </span>
             <h1 className="text-2xl font-bold text-white tracking-tight">Pega la URL del Post</h1>
             <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-              Ingresa el enlace de Instagram para extraer comentarios y cualificar oportunidades.
+              Ingresa el enlace de Instagram para extraer detalles y analizar comentarios.
             </p>
           </div>
 
-          {error && (
-            <div className="mb-4 bg-amber-950/40 border border-amber-700/60 text-amber-300 p-3 rounded-xl text-xs text-center">
-              {error}
-            </div>
-          )}
-
           <form onSubmit={handleUrlSubmit} className="space-y-4">
-            <div>
-              <input
-                type="url"
-                required
-                value={postUrl}
-                onChange={(e) => setPostUrl(e.target.value)}
-                placeholder="https://www.instagram.com/p/..."
-                className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition"
-              />
-            </div>
-
+            <input
+              type="url"
+              required
+              value={postUrl}
+              onChange={(e) => setPostUrl(e.target.value)}
+              placeholder="https://www.instagram.com/p/..."
+              className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition"
+            />
             <button
               type="submit"
-              disabled={isAnalyzing}
+              disabled={isLoadingDetails}
               className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition shadow-lg shadow-emerald-950/40 flex items-center justify-center space-x-2 disabled:opacity-60 cursor-pointer"
             >
-              <span>{isAnalyzing ? 'Procesando post...' : 'Siguiente Paso →'}</span>
+              <span>{isLoadingDetails ? 'Extrayendo datos del post...' : 'Siguiente Paso →'}</span>
             </button>
           </form>
         </div>
       )}
 
-      {/* Paso 2: Visualización de Contexto */}
+      {/* PASO 2: Contexto y Congruencia */}
       {step === 2 && postDetails && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <span className="inline-block bg-sky-500/10 text-sky-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-sky-500/20">
-              Paso 2: Análisis del Post
+              Paso 2: Análisis del Post y Congruencia
             </span>
             <button
               onClick={handleReset}
@@ -141,9 +226,111 @@ export default function Dashboard() {
 
           <PostContextDisplay postDetails={postDetails} profileAnalysis={profileAnalysis} />
 
-          {comments.length > 0 && (
-            <OpportunityFilter comments={comments} postDetails={postDetails} />
-          )}
+          <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 space-y-4">
+            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Contexto de tu Producto / Oferta</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Tu Nicho / Producto:</label>
+                <input
+                  type="text"
+                  value={niche}
+                  onChange={(e) => setNiche(e.target.value)}
+                  placeholder="Ej: Academia de Marketing Digital, High-Ticket Setting..."
+                  className="w-full bg-[#0B121E] border border-[#24334A] rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-sky-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Tu Cliente Ideal (Avatar):</label>
+                <textarea
+                  rows={2}
+                  value={avatar}
+                  onChange={(e) => setAvatar(e.target.value)}
+                  placeholder="Ej: Emprendedores que buscan herramientas de IA para escalar ventas..."
+                  className="w-full bg-[#0B121E] border border-[#24334A] rounded-xl px-4 py-2 text-sm text-white outline-none focus:border-sky-500"
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAnalyzeCongruence}
+              disabled={isAnalyzingLeads}
+              className="w-full mt-4 bg-sky-600 hover:bg-sky-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition shadow-lg shadow-sky-950/40 flex items-center justify-center space-x-2 disabled:opacity-60 cursor-pointer"
+            >
+              <span>{isAnalyzingLeads ? 'Analizando comentarios con IA...' : '⚡ Generar análisis de congruencia y resultados'}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* PASO 3: Resultados de Leads y Bandeja de Salida */}
+      {step === 3 && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <span className="inline-block bg-emerald-500/10 text-emerald-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-emerald-500/20 mb-1">
+                Paso 3: Oportunidades Identificadas
+              </span>
+              <p className="text-xs text-slate-400">{summary}</p>
+            </div>
+            <button
+              onClick={() => setStep(2)}
+              className="bg-[#1E293B] hover:bg-[#334155] text-slate-200 text-xs font-bold py-2 px-4 rounded-xl transition border border-[#334155]"
+            >
+              ← Volver al paso 2
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {leads.map((lead, idx) => (
+              <div key={idx} className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 space-y-4">
+                <div className="flex justify-between items-start">
+                  <div className="bg-[#0B121E] border border-[#24334A] p-3 rounded-xl max-w-xl">
+                    <p className="text-xs text-slate-400 font-semibold mb-1">Comentario del prospecto:</p>
+                    <p className="text-sm text-slate-200 italic">"{lead.comment_text}"</p>
+                  </div>
+                  <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-bold px-3 py-1 rounded-full">
+                    Score: {lead.potential_score}/10
+                  </span>
+                </div>
+
+                <div className="bg-sky-950/20 border border-sky-800/30 p-3 rounded-xl">
+                  <p className="text-xs text-sky-400 font-semibold mb-1">Dolor identificado:</p>
+                  <p className="text-xs text-slate-300">{lead.pain_point_identified}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-slate-400 font-semibold mb-2">Selecciona un mensaje de apertura (Opener):</p>
+                  <div className="space-y-2">
+                    {lead.suggested_openers?.map((opener: string, oIdx: number) => {
+                      const isSelected = (selectedOpeners[idx] || lead.suggested_openers[0]) === opener;
+                      return (
+                        <div
+                          key={oIdx}
+                          onClick={() => setSelectedOpeners({ ...selectedOpeners, [idx]: opener })}
+                          className={`p-3 rounded-xl border text-xs cursor-pointer transition ${
+                            isSelected
+                              ? 'bg-sky-600/20 border-sky-500 text-white'
+                              : 'bg-[#0B121E] border-[#24334A] text-slate-300 hover:border-slate-600'
+                          }`}
+                        >
+                          {opener}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleAddToOutbox(idx, lead)}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center space-x-2 cursor-pointer shadow-md"
+                >
+                  <span>📥 Agregar a Bandeja de Salida</span>
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
