@@ -13,7 +13,8 @@ export default function ProductsHotlinksPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Estados del formulario
+  // Estados del formulario (con productName)
+  const [productName, setProductName] = useState('');
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [description, setDescription] = useState('');
@@ -49,7 +50,7 @@ export default function ProductsHotlinksPage() {
       const data = await response.json();
       setResources(Array.isArray(data) ? data : data.resources || []);
     } catch (err: any) {
-      // Fallback a localStorage si el backend aún no tiene la ruta lista
+      // Fallback a localStorage
       const local = localStorage.getItem('hotlinks_portfolio');
       if (local) {
         try {
@@ -59,10 +60,11 @@ export default function ProductsHotlinksPage() {
           setResources([]);
         }
       } else {
-        // Recursos precargados de ejemplo inicial
+        // Datos de ejemplo con la estructura 1 a Muchos (Producto -> Recursos)
         const initialSamples = [
           {
             id: 'sample-1',
+            product_name: 'Método Setter Pro',
             title: 'Masterclass: Secretos de Prospección',
             resource_type: 'Masterclass',
             url: 'https://go.hotmart.com/CLASE_EJEMPLO',
@@ -70,10 +72,19 @@ export default function ProductsHotlinksPage() {
           },
           {
             id: 'sample-2',
+            product_name: 'Método Setter Pro',
+            title: 'Checkout Directo (Oferta Especial)',
+            resource_type: 'Checkout / Oferta',
+            url: 'https://go.hotmart.com/CHECKOUT_EJEMPLO',
+            description: 'Página de pago con descuento para cierre inmediato (Low Ticket).',
+          },
+          {
+            id: 'sample-3',
+            product_name: 'Academia High-Ticket',
             title: 'CPL 1: Entrevista Caso de Éxito',
             resource_type: 'CPL',
             url: 'https://go.hotmart.com/CPL1_EJEMPLO',
-            description: 'Prueba social para enviar a prospectos con dudas.',
+            description: 'Prueba social para prospectos en fase de cualificación.',
           },
         ];
         setResources(initialSamples);
@@ -86,8 +97,8 @@ export default function ProductsHotlinksPage() {
 
   const handleAddResource = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !url.trim()) {
-      alert('Por favor introduce el título y el Hotlink correspondiente.');
+    if (!productName.trim() || !title.trim() || !url.trim()) {
+      alert('Por favor completa el Nombre del Producto, Título del Recurso y el Hotlink.');
       return;
     }
 
@@ -97,6 +108,7 @@ export default function ProductsHotlinksPage() {
 
     const newResource = {
       id: Date.now().toString(),
+      product_name: productName.trim(),
       title: title.trim(),
       url: url.trim(),
       description: description.trim(),
@@ -120,7 +132,6 @@ export default function ProductsHotlinksPage() {
         throw new Error('Guardando en almacenamiento local.');
       }
     } catch (err: any) {
-      // Si el backend no responde, se guarda localmente en el navegador
       const updated = [newResource, ...resources];
       setResources(updated);
       localStorage.setItem('hotlinks_portfolio', JSON.stringify(updated));
@@ -173,16 +184,16 @@ export default function ProductsHotlinksPage() {
           Portafolio de Productos & Hotlinks de Hotmart
         </h1>
         <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-          Centraliza tus enlaces de afiliado y materiales de conversión (Webinars, CPL, Masterclasses y Páginas de Pago) para enviarlos rápidamente durante la conversación.
+          Organiza tus ofertas y sus recursos asociados (Webinars, CPL, Embudos o Checkouts) para utilizarlos según el nivel del ticket (Low, Mid o High Ticket).
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        {/* Columna Izquierda: Tabla y Lista de Hotlinks */}
+        {/* Columna Izquierda: Lista de Hotlinks agrupados/asociados al Producto */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-white tracking-tight">
-              Hotlinks Activos ({resources.length})
+              Recursos & Enlaces Activos ({resources.length})
             </h2>
             <button
               onClick={fetchResources}
@@ -202,7 +213,7 @@ export default function ProductsHotlinksPage() {
               <span className="text-3xl">🔗</span>
               <p className="text-sm font-semibold text-white">No tienes Hotlinks registrados</p>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Registra a la derecha tu primer enlace de Hotmart (por ejemplo, el Webinar o el CPL 1) para tenerlo a mano durante el chat.
+                Registra a la derecha el nombre de tu producto y sus enlaces de Hotmart para tenerlos a mano durante las conversaciones.
               </p>
             </div>
           ) : (
@@ -216,7 +227,13 @@ export default function ProductsHotlinksPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="flex items-center gap-2 mb-1">
+                        {/* Producto Padre */}
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          <span className="bg-[#0B121E] text-sky-400 text-[11px] font-bold px-2.5 py-0.5 rounded-md border border-sky-500/30 flex items-center space-x-1">
+                            <span>📦</span>
+                            <span>{item.product_name || 'Producto General'}</span>
+                          </span>
+
                           <span
                             className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${getBadgeStyle(
                               item.resource_type
@@ -224,10 +241,11 @@ export default function ProductsHotlinksPage() {
                           >
                             {item.resource_type || 'Hotlink'}
                           </span>
-                          <h3 className="font-bold text-white text-sm">{item.title}</h3>
                         </div>
+
+                        <h3 className="font-bold text-white text-sm">{item.title}</h3>
                         {item.description && (
-                          <p className="text-xs text-slate-400">{item.description}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{item.description}</p>
                         )}
                       </div>
 
@@ -274,28 +292,43 @@ export default function ProductsHotlinksPage() {
           )}
         </div>
 
-        {/* Columna Derecha: Formulario para Añadir Nuevo Hotlink */}
+        {/* Columna Derecha: Formulario con Campo Producto */}
         <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 shadow-xl space-y-4">
           <div className="border-b border-[#24334A] pb-3">
             <h2 className="text-base font-bold text-white tracking-tight">
-              Añadir Nuevo Hotlink
+              Añadir Nuevo Recurso
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Registra enlaces estratégicos de tu panel de afiliado de Hotmart.
+              Asocia un recurso o enlace al producto que estás comercializando.
             </p>
           </div>
 
           <form onSubmit={handleAddResource} className="space-y-4">
+            {/* Campo de Nombre del Producto */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Nombre o Título del Recurso
+                Nombre del Producto / Oferta
+              </label>
+              <input
+                type="text"
+                required
+                value={productName}
+                onChange={(e) => setProductName(e.target.value)}
+                placeholder="Ej: Mastermind Inmobiliario, Curso Setter..."
+                className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                Nombre del Recurso
               </label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ej: Masterclass de Cierre, CPL 2..."
+                placeholder="Ej: Masterclass de Cierre, CPL 2, Checkout..."
                 className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition"
               />
             </div>
@@ -312,7 +345,7 @@ export default function ProductsHotlinksPage() {
                 <option value="Webinar">Webinar en Vivo / Repetición</option>
                 <option value="CPL">CPL (Contenido Pre-Lanzamiento)</option>
                 <option value="Masterclass">Masterclass Gratuita</option>
-                <option value="Checkout / Oferta">Página de Pago / Checkout Directo</option>
+                <option value="Checkout / Oferta">Página de Pago / Checkout Directo (Low Ticket)</option>
                 <option value="Embudo Directo">Página de Captura / Lead Magnet</option>
               </select>
             </div>
@@ -333,13 +366,13 @@ export default function ProductsHotlinksPage() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Nota o Indicación para el Setter (Opcional)
+                Estrategia para el Setter (Opcional)
               </label>
               <textarea
                 rows={2}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Ej: Enviar únicamente si el prospecto pregunta por facilidades de pago..."
+                placeholder="Ej: Para prospectos que dudan del precio o para calentar antes del cierre..."
                 className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition resize-none"
               />
             </div>
