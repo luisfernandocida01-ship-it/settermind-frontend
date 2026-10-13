@@ -29,10 +29,8 @@ export default function StrategiesPage() {
           },
         });
 
-        if (response.status === 401 || response.status === 404) {
-          // Si el token es inválido o no existe el usuario en la BD, limpiar y renovar sesión
-          const data = await response.json();
-          setError(data.error || data.detail || 'Sesión expirada o usuario no encontrado. Inicia sesión nuevamente.');
+        if (response.status === 401) {
+          router.push('/login');
           return;
         }
 
@@ -43,7 +41,7 @@ export default function StrategiesPage() {
 
         setStrategies(Array.isArray(data.strategies) ? data.strategies : Array.isArray(data) ? data : []);
       } catch (err: any) {
-        setError(err.message || 'Error de conexión');
+        setError(err.message || 'Error al cargar estrategias');
       } finally {
         setIsLoading(false);
       }
@@ -52,42 +50,106 @@ export default function StrategiesPage() {
     fetchStrategies();
   }, [router]);
 
-  return (
-    <div className="p-8 max-w-5xl mx-auto text-slate-100">
-      <div className="mb-6">
-        <h1 className="text-3xl font-extrabold text-white tracking-tight">Estrategia & Avatar</h1>
-        <p className="text-xs text-gray-400 mt-1 uppercase tracking-wider">
-          FASE 1 • Define los ángulos de prospección y criterios de avatar consultivo
-        </p>
-      </div>
+  const handleUseHashtagInRadar = (hashtag: string) => {
+    localStorage.setItem('selected_radar_hashtag', hashtag.replace(/^#/, ''));
+    router.push('/prospect');
+  };
 
-      {isLoading ? (
-        <p className="text-gray-400 text-sm">Cargando estrategias...</p>
-      ) : error ? (
-        <div className="bg-[#1C1318] border border-red-800/60 text-red-300 p-4 rounded-xl text-sm flex items-center justify-between">
-          <span>{error}</span>
-          <button
-            onClick={() => router.push('/login')}
-            className="ml-4 bg-red-800/40 hover:bg-red-700/60 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition"
-          >
-            Reconectar
-          </button>
-        </div>
-      ) : strategies.length === 0 ? (
-        <div className="bg-[#111A28] border border-[#1E2D42] rounded-xl p-8 text-center mt-4">
-          <p className="text-gray-200 text-base font-semibold">Aún no tienes estrategias registradas.</p>
-          <p className="text-gray-400 text-xs mt-1">
-            Dirígete a <strong className="text-sky-400">Radar de Prospectos</strong> para generar tu primera campaña con IA.
+  return (
+    <div className="w-full max-w-4xl mx-auto space-y-8 py-2">
+      {/* Encabezado */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#24334A] pb-6">
+        <div>
+          <span className="inline-block bg-sky-500/10 text-sky-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-sky-500/20 mb-2">
+            Fase 1 • Planificación
+          </span>
+          <h1 className="text-2xl font-bold text-white tracking-tight">
+            Estrategia & Oportunidades ({strategies.length})
+          </h1>
+          <p className="text-xs text-slate-400 mt-1">
+            Consulta tus nichos guardados, hashtags validados y reutilízalos para rastrear nuevos posts calificados.
           </p>
         </div>
+
+        <button
+          onClick={() => router.push('/prospect')}
+          className="bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition cursor-pointer shadow-md"
+        >
+          + Nueva Estrategia en Radar
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-amber-950/40 border border-amber-700/60 text-amber-300 p-4 rounded-xl text-xs font-medium text-center">
+          {error}
+        </div>
+      )}
+
+      {strategies.length === 0 && !isLoading ? (
+        <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-12 text-center">
+          <p className="text-slate-400 text-sm">Aún no tienes estrategias guardadas.</p>
+          <p className="text-xs text-slate-500 mt-1">Genera una en el Radar de Prospectos y aparecerá registrada aquí.</p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          {strategies.map((item, idx) => (
-            <div key={item.id || idx} className="bg-[#111A28] border border-[#1E2D42] rounded-xl p-5">
-              <h3 className="text-white font-bold text-base mb-1">{item.title || item.name || `Estrategia #${idx + 1}`}</h3>
-              <p className="text-gray-300 text-xs leading-relaxed">{item.description || item.content || 'Sin descripción'}</p>
-            </div>
-          ))}
+        <div className="space-y-6">
+          {strategies.map((strat: any, idx: number) => {
+            const hashtagsList = Array.isArray(strat.hashtags) ? strat.hashtags : [];
+            const keywordsList = Array.isArray(strat.keywords) ? strat.keywords : [];
+
+            return (
+              <div key={strat.id || idx} className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 space-y-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-xs font-bold text-sky-400 uppercase tracking-wider">
+                      Estrategia #{idx + 1}
+                    </span>
+                    <h3 className="text-base font-bold text-white mt-1">{strat.niche}</h3>
+                  </div>
+                  <span className="text-[11px] text-slate-500">
+                    {strat.created_at ? new Date(strat.created_at).toLocaleDateString() : ''}
+                  </span>
+                </div>
+
+                <div className="bg-[#0B121E] border border-[#24334A] p-4 rounded-xl">
+                  <p className="text-xs font-semibold text-slate-400 mb-1">Avatar / Cliente Ideal:</p>
+                  <p className="text-xs text-slate-200 leading-relaxed">{strat.avatar}</p>
+                </div>
+
+                {/* Hashtags accionables */}
+                {hashtagsList.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 mb-2">Hashtags Accionables (Clic para buscar en Radar):</p>
+                    <div className="flex flex-wrap gap-2">
+                      {hashtagsList.map((tag: string, hIdx: number) => (
+                        <button
+                          key={hIdx}
+                          onClick={() => handleUseHashtagInRadar(tag)}
+                          className="bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 text-xs px-3 py-1.5 rounded-full transition cursor-pointer flex items-center space-x-1"
+                        >
+                          <span>#{tag.replace(/^#/, '')}</span>
+                          <span className="text-[10px] text-sky-400">↗</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Palabras Clave */}
+                {keywordsList.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 mb-2">Términos Clave:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {keywordsList.map((kw: string, kIdx: number) => (
+                        <span key={kIdx} className="bg-[#0B121E] text-slate-300 border border-[#24334A] text-[11px] px-2.5 py-1 rounded-lg">
+                          🔍 {kw}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

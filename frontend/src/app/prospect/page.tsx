@@ -6,6 +6,8 @@ import { useAuth } from '@/components/useAuth';
 import { useProspectStore } from '@/store/prospectStore';
 import { generateStrategy, prospect } from '@/lib/api';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://settermind-flask-template.onrender.com';
+
 export default function ProspectPage() {
   const { logout } = useAuth();
   const router = useRouter();
@@ -29,7 +31,15 @@ export default function ProspectPage() {
     }
   }, [router]);
 
-  const handleGenerateStrategy = async () => {
+useEffect(() => {
+    const selectedTag = localStorage.getItem('selected_radar_hashtag');
+    if (selectedTag) {
+      setProfileUsername(selectedTag);
+      localStorage.removeItem('selected_radar_hashtag');
+    }
+  }, []);
+ 
+const handleGenerateStrategy = async () => {
     if (!strategyNiche.trim() || !strategyAvatar.trim()) {
       setError('Por favor, completa los campos de Nicho y Cliente Ideal antes de generar la estrategia.');
       return;
@@ -37,6 +47,7 @@ export default function ProspectPage() {
 
     setIsGenerating(true);
     setError(null);
+    const token = localStorage.getItem('jwt_token');
 
     try {
       const strategyData = { niche: strategyNiche, avatar: strategyAvatar };
@@ -57,6 +68,24 @@ export default function ProspectPage() {
       if (hashtags.length > 0) {
         setProfileUsername(hashtags[0].replace(/^#/, ''));
       }
+
+      // PERSISTIR EN BASE DE DATOS
+      if (token) {
+        fetch(`${API_BASE_URL}/api/strategies`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            niche: strategyNiche,
+            avatar: strategyAvatar,
+            keywords: profiles,
+            hashtags: hashtags,
+          }),
+        }).catch((e) => console.error("Error guardando estrategia:", e));
+      }
+
     } catch (err: any) {
       setError(err.message || 'La generación de estrategia falló.');
     } finally {
