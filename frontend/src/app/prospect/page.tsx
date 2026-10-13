@@ -160,7 +160,9 @@ const handleSavePostToStrategy = async (post: any) => {
         if (list.length > 0) {
           stratId = list[0].id;
           setActiveStrategyId(stratId);
+        if (stratId) {
           localStorage.setItem('active_strategy_id', stratId);
+        }
         }
       } catch (e) {
         console.error("Error buscando estrategia existente:", e);
