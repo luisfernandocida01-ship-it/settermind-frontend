@@ -9,8 +9,12 @@ import { generateStrategy, prospect } from '@/lib/api';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://settermind-flask-template.onrender.com';
 
 export default function ProspectPage() {
-  const { logout } = useAuth();
+  useAuth();
   const router = useRouter();
+
+  // Estrategia activa y publicaciones guardadas durante esta sesión.
+  const [savedPostUrls, setSavedPostUrls] = useState<{ [key: string]: boolean }>({});
+  const [activeStrategyId, setActiveStrategyId] = useState<string | null>(null);
 
   // Estados locales para los formularios
   const [strategyNiche, setStrategyNiche] = useState('');
@@ -28,64 +32,74 @@ export default function ProspectPage() {
   useEffect(() => {
     if (!localStorage.getItem('jwt_token')) {
       router.push('/login');
+      return;
     }
+    setActiveStrategyId(localStorage.getItem('active_strategy_id'));
   }, [router]);
 
-useEffect(() => {
+  useEffect(() => {
     const selectedTag = localStorage.getItem('selected_radar_hashtag');
     if (selectedTag) {
       setProfileUsername(selectedTag);
       localStorage.removeItem('selected_radar_hashtag');
     }
   }, []);
- 
-const handleGenerateStrategy = async () => {
+
+  const handleGenerateStrategy = async () => {
     if (!strategyNiche.trim() || !strategyAvatar.trim()) {
       setError('Por favor, completa los campos de Nicho y Cliente Ideal antes de generar la estrategia.');
       return;
     }
-
     setIsGenerating(true);
     setError(null);
     const token = localStorage.getItem('jwt_token');
-
     try {
       const strategyData = { niche: strategyNiche, avatar: strategyAvatar };
       const data = await generateStrategy(strategyData);
-
-      const profiles: string[] = Array.isArray(data?.reference_profiles) 
-        ? data.reference_profiles 
+      const profiles: string[] = Array.isArray(data?.reference_profiles)
+        ? data.reference_profiles
         : (data?.keywords || []);
       const hashtags: string[] = Array.isArray(data?.hashtags) ? data.hashtags : [];
-
       if (profiles.length === 0 && hashtags.length === 0) {
         throw new Error('La IA no devolvió hashtags ni términos de búsqueda.');
       }
-
       setSuggestedProfiles(profiles);
       setSuggestedHashtags(hashtags);
-
       if (hashtags.length > 0) {
         setProfileUsername(hashtags[0].replace(/^#/, ''));
       }
-
-      // PERSISTIR EN BASE DE DATOS
-      if (token) {
-        fetch(`${API_BASE_URL}/api/strategies`, {
+      // Persistir la estrategia y conservar el ID confirmado por el backend.
+      if (!token) {
+        setError('No hay una sesión activa para guardar la estrategia. Inicia sesión nuevamente.');
+      } else {
+        const res = await fetch(`${API_BASE_URL}/api/strategies`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             niche: strategyNiche,
             avatar: strategyAvatar,
             keywords: profiles,
-            hashtags: hashtags,
+            hashtags,
           }),
-        }).catch((e) => console.error("Error guardando estrategia:", e));
-      }
+        });
 
+        if (!res.ok) {
+          throw new Error(`Se generaron las sugerencias, pero no se pudo guardar la estrategia (${res.status}).`);
+        }
+
+        const resData = await res.json();
+        if (resData?.strategy_id) {
+          const strategyId = String(resData.strategy_id);
+          setActiveStrategyId(strategyId);
+          localStorage.setItem('active_strategy_id', strategyId);
+          setSavedPostUrls({});
+        } else {
+          throw new Error('La estrategia se creó sin un ID confirmado para guardar publicaciones.');
+        }
+      }
     } catch (err: any) {
       setError(err.message || 'La generación de estrategia falló.');
     } finally {
@@ -96,12 +110,10 @@ const handleGenerateStrategy = async () => {
   const handleProspectSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileUsername.trim()) return;
-
     setIsLoading(true);
     setError(null);
     try {
       const data = await prospect({ hashtag: profileUsername.trim().replace(/^#/, '') });
-
       if (data.found_posts && data.found_posts.length > 0) {
         setFoundPosts(data.found_posts);
       } else {
@@ -133,6 +145,49 @@ const handleGenerateStrategy = async () => {
     router.push('/');
   };
 
+  const handleSavePostToStrategy = async (post: any) => {
+    if (!post?.url) {
+      setError('La publicación no tiene una URL válida para guardarla.');
+      return;
+    }
+
+    const token = localStorage.getItem('jwt_token');
+    const stratId = activeStrategyId || localStorage.getItem('active_strategy_id');
+    if (!stratId) {
+      setError('No hay una estrategia activa seleccionada para guardar este post.');
+      return;
+    }
+    if (!token) {
+      setError('Tu sesión ha expirado. Inicia sesión nuevamente para guardar publicaciones.');
+      return;
+    }
+
+    try {
+      setError(null);
+      const res = await fetch(`${API_BASE_URL}/api/strategies/${encodeURIComponent(stratId)}/posts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          url: post.url,
+          caption: post.caption || '',
+          likesCount: post.likesCount ?? 0,
+          commentsCount: post.commentsCount ?? 0,
+          ownerUsername: post.ownerUsername || '',
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`No se pudo guardar la publicación (${res.status}).`);
+      }
+      setSavedPostUrls((prev) => ({ ...prev, [post.url]: true }));
+    } catch (err: unknown) {
+      console.error('Error guardando post en estrategia:', err);
+      setError(err instanceof Error ? err.message : 'Error al guardar la publicación en la estrategia.');
+    }
+  };
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8 py-2">
       {error && (
@@ -140,7 +195,6 @@ const handleGenerateStrategy = async () => {
           {error}
         </div>
       )}
-
       {/* VISTA DE RESULTADOS (Si hay posts encontrados) */}
       {foundPosts && foundPosts.length > 0 ? (
         <div className="space-y-6">
@@ -156,13 +210,11 @@ const handleGenerateStrategy = async () => {
               ← Nueva Búsqueda
             </button>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {foundPosts.map((post: any, idx: number) => {
               const author = post.ownerUsername || 'autor_desconocido';
               const likes = post.likesCount ?? 0;
               const comments = post.commentsCount ?? 0;
-
               return (
                 <div key={idx} className="bg-[#162032] border border-[#24334A] rounded-2xl p-5 flex flex-col justify-between space-y-4">
                   <div>
@@ -174,18 +226,31 @@ const handleGenerateStrategy = async () => {
                         <span>💬 {comments}</span>
                       </div>
                     </div>
-
                     <p className="text-xs text-slate-300 line-clamp-4 leading-relaxed">
                       "{post.caption || 'Sin descripción disponible.'}"
                     </p>
                   </div>
-
-                  <button
-                    onClick={() => handleAnalyzeUrl(post.url)}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center space-x-1 cursor-pointer shadow-md"
-                  >
-                    <span>⚡ Analizar Publicación y Extraer Prospectos</span>
-                  </button>
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => handleAnalyzeUrl(post.url)}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center space-x-1 cursor-pointer"
+                    >
+                      <span>⚡ Analizar Publicación</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSavePostToStrategy(post)}
+                      disabled={!!savedPostUrls[post.url]}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center border ${
+                        savedPostUrls[post.url]
+                          ? 'bg-sky-950/40 border-sky-600 text-sky-300 cursor-not-allowed'
+                          : 'bg-[#0B121E] hover:bg-[#1E293B] border-[#24334A] text-slate-300 cursor-pointer'
+                      }`}
+                    >
+                      <span>{savedPostUrls[post.url] ? '✓ Guardado' : '💾 Guardar'}</span>
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -205,7 +270,6 @@ const handleGenerateStrategy = async () => {
                 Describe tu oferta y la IA sugerirá los hashtags y palabras clave con mayor concentración de prospectos.
               </p>
             </div>
-
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1">Nicho / Producto:</label>
@@ -217,7 +281,6 @@ const handleGenerateStrategy = async () => {
                   className="w-full bg-[#0B121E] border border-[#24334A] rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-sky-500 transition"
                 />
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1">Cliente Ideal (Avatar):</label>
                 <textarea
@@ -228,7 +291,6 @@ const handleGenerateStrategy = async () => {
                   className="w-full bg-[#0B121E] border border-[#24334A] rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-sky-500 transition"
                 />
               </div>
-
               <button
                 type="button"
                 onClick={handleGenerateStrategy}
@@ -238,7 +300,6 @@ const handleGenerateStrategy = async () => {
                 <span>{isGenerating ? 'Generando ideas con IA...' : '🧠 Generar Estrategia con IA'}</span>
               </button>
             </div>
-
             {/* CHIPS ACCIONABLES DE HASHTAGS Y PALABRAS CLAVE */}
             {(suggestedHashtags.length > 0 || suggestedProfiles.length > 0) && (
               <div className="bg-[#0B121E] border border-[#24334A] rounded-xl p-4 space-y-3 mt-4">
@@ -285,7 +346,6 @@ const handleGenerateStrategy = async () => {
               </div>
             )}
           </div>
-
           {/* PASO 2: Buscar Oportunidades */}
           <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-7 shadow-xl space-y-5">
             <div className="text-center">
@@ -297,7 +357,6 @@ const handleGenerateStrategy = async () => {
                 Explora publicaciones activas por hashtag para encontrar prospectos calificados.
               </p>
             </div>
-
             <form onSubmit={handleProspectSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1">Hashtag o Término de Búsqueda:</label>
@@ -313,7 +372,6 @@ const handleGenerateStrategy = async () => {
                   />
                 </div>
               </div>
-
               <button
                 type="submit"
                 disabled={isLoading}

@@ -55,6 +55,15 @@ export default function StrategiesPage() {
     router.push('/prospect');
   };
 
+  const handleAnalyzeSavedPost = (url: string) => {
+    if (!url) {
+      setError('Esta publicación no tiene una URL disponible para analizar.');
+      return;
+    }
+    localStorage.setItem('url_to_analyze', url);
+    router.push('/');
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8 py-2">
       {/* Encabezado */}
@@ -72,6 +81,7 @@ export default function StrategiesPage() {
         </div>
 
         <button
+          type="button"
           onClick={() => router.push('/prospect')}
           className="bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition cursor-pointer shadow-md"
         >
@@ -95,6 +105,7 @@ export default function StrategiesPage() {
           {strategies.map((strat: any, idx: number) => {
             const hashtagsList = Array.isArray(strat.hashtags) ? strat.hashtags : [];
             const keywordsList = Array.isArray(strat.keywords) ? strat.keywords : [];
+            const savedPosts = Array.isArray(strat.saved_posts) ? strat.saved_posts : [];
 
             return (
               <div key={strat.id || idx} className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 space-y-4">
@@ -122,6 +133,7 @@ export default function StrategiesPage() {
                     <div className="flex flex-wrap gap-2">
                       {hashtagsList.map((tag: string, hIdx: number) => (
                         <button
+                          type="button"
                           key={hIdx}
                           onClick={() => handleUseHashtagInRadar(tag)}
                           className="bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 text-xs px-3 py-1.5 rounded-full transition cursor-pointer flex items-center space-x-1"
@@ -143,6 +155,39 @@ export default function StrategiesPage() {
                         <span key={kIdx} className="bg-[#0B121E] text-slate-300 border border-[#24334A] text-[11px] px-2.5 py-1 rounded-lg">
                           🔍 {kw}
                         </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Publicaciones Oportunidad Almacenadas */}
+                {savedPosts.length > 0 && (
+                  <div className="pt-3 border-t border-[#24334A]/60">
+                    <p className="text-xs font-bold text-emerald-400 uppercase tracking-wide mb-3">
+                      Publicaciones Guardadas ({savedPosts.length}):
+                    </p>
+                    <div className="space-y-3">
+                      {savedPosts.map((post: any, pIdx: number) => (
+                        <div
+                          key={post.url || pIdx}
+                          className="bg-[#0B121E] border border-[#24334A] rounded-xl p-3.5 flex flex-col sm:flex-row justify-between sm:items-center gap-3"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-3 mb-1">
+                              <span className="text-xs font-bold text-sky-400">@{post.ownerUsername || 'autor'}</span>
+                              <span className="text-[11px] text-slate-400">❤️ {post.likesCount ?? 0} | 💬 {post.commentsCount ?? 0}</span>
+                            </div>
+                            <p className="text-xs text-slate-300 line-clamp-2 italic">"{post.caption || 'Sin descripción disponible.'}"</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleAnalyzeSavedPost(post.url)}
+                            disabled={!post.url}
+                            className="self-start sm:self-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-lg text-xs transition cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            ⚡ Analizar y Extraer Leads
+                          </button>
+                        </div>
                       ))}
                     </div>
                   </div>
