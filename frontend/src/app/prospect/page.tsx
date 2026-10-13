@@ -145,47 +145,57 @@ export default function ProspectPage() {
     router.push('/');
   };
 
-  const handleSavePostToStrategy = async (post: any) => {
-    if (!post?.url) {
-      setError('La publicación no tiene una URL válida para guardarla.');
-      return;
+const handleSavePostToStrategy = async (post: any) => {
+    const token = localStorage.getItem('jwt_token');
+    let stratId = activeStrategyId || localStorage.getItem('active_strategy_id');
+
+    // Si no hay ID en memoria, intentamos obtener la estrategia más reciente
+    if (!stratId) {
+      try {
+        const resStrats = await fetch(`${API_BASE_URL}/api/strategies`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const dataStrats = await resStrats.json();
+        const list = Array.isArray(dataStrats.strategies) ? dataStrats.strategies : [];
+        if (list.length > 0) {
+          stratId = list[0].id;
+          setActiveStrategyId(stratId);
+          localStorage.setItem('active_strategy_id', stratId);
+        }
+      } catch (e) {
+        console.error("Error buscando estrategia existente:", e);
+      }
     }
 
-    const token = localStorage.getItem('jwt_token');
-    const stratId = activeStrategyId || localStorage.getItem('active_strategy_id');
     if (!stratId) {
-      setError('No hay una estrategia activa seleccionada para guardar este post.');
-      return;
-    }
-    if (!token) {
-      setError('Tu sesión ha expirado. Inicia sesión nuevamente para guardar publicaciones.');
+      setError('Por favor genera primero una estrategia o crea una en "1. Estrategia & Oportunidades" para guardar este post.');
       return;
     }
 
     try {
-      setError(null);
-      const res = await fetch(`${API_BASE_URL}/api/strategies/${encodeURIComponent(stratId)}/posts`, {
+      const res = await fetch(`${API_BASE_URL}/api/strategies/${stratId}/posts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           url: post.url,
           caption: post.caption || '',
-          likesCount: post.likesCount ?? 0,
-          commentsCount: post.commentsCount ?? 0,
+          likesCount: post.likesCount || 0,
+          commentsCount: post.commentsCount || 0,
           ownerUsername: post.ownerUsername || '',
         }),
       });
 
-      if (!res.ok) {
-        throw new Error(`No se pudo guardar la publicación (${res.status}).`);
+      if (res.ok) {
+        setSavedPostUrls((prev) => ({ ...prev, [post.url]: true }));
+      } else {
+        const errData = await res.json().catch(() => null);
+        setError(errData?.detail || 'No se pudo guardar el post.');
       }
-      setSavedPostUrls((prev) => ({ ...prev, [post.url]: true }));
-    } catch (err: unknown) {
-      console.error('Error guardando post en estrategia:', err);
-      setError(err instanceof Error ? err.message : 'Error al guardar la publicación en la estrategia.');
+    } catch (err: any) {
+      setError('Error al guardar el post en la estrategia.');
     }
   };
   return (
