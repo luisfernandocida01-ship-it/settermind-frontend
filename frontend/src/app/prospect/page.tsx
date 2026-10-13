@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/useAuth';
 import { useProspectStore } from '@/store/prospectStore';
@@ -15,6 +15,10 @@ export default function ProspectPage() {
   // Estrategia activa y publicaciones guardadas durante esta sesión.
   const [savedPostUrls, setSavedPostUrls] = useState<{ [key: string]: boolean }>({});
   const [activeStrategyId, setActiveStrategyId] = useState<string | null>(null);
+  // Una única resolución evita crear varias estrategias rápidas por clics simultáneos.
+  const strategyResolutionRef = useRef<Promise<string> | null>(null);
+  const pendingPostUrlsRef = useRef<Set<string>>(new Set());
+  const [savingPostUrls, setSavingPostUrls] = useState<{ [key: string]: boolean }>({});
 
   // Estados locales para los formularios
   const [strategyNiche, setStrategyNiche] = useState('');
@@ -52,53 +56,33 @@ export default function ProspectPage() {
     }
     setIsGenerating(true);
     setError(null);
-    const token = localStorage.getItem('jwt_token');
     try {
       const strategyData = { niche: strategyNiche, avatar: strategyAvatar };
       const data = await generateStrategy(strategyData);
+
       const profiles: string[] = Array.isArray(data?.reference_profiles)
         ? data.reference_profiles
         : (data?.keywords || []);
       const hashtags: string[] = Array.isArray(data?.hashtags) ? data.hashtags : [];
+
       if (profiles.length === 0 && hashtags.length === 0) {
         throw new Error('La IA no devolvió hashtags ni términos de búsqueda.');
       }
+
       setSuggestedProfiles(profiles);
       setSuggestedHashtags(hashtags);
+
       if (hashtags.length > 0) {
         setProfileUsername(hashtags[0].replace(/^#/, ''));
       }
-      // Persistir la estrategia y conservar el ID confirmado por el backend.
-      if (!token) {
-        setError('No hay una sesión activa para guardar la estrategia. Inicia sesión nuevamente.');
-      } else {
-        const res = await fetch(`${API_BASE_URL}/api/strategies`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            niche: strategyNiche,
-            avatar: strategyAvatar,
-            keywords: profiles,
-            hashtags,
-          }),
-        });
 
-        if (!res.ok) {
-          throw new Error(`Se generaron las sugerencias, pero no se pudo guardar la estrategia (${res.status}).`);
-        }
-
-        const resData = await res.json();
-        if (resData?.strategy_id) {
-          const strategyId = String(resData.strategy_id);
-          setActiveStrategyId(strategyId);
-          localStorage.setItem('active_strategy_id', strategyId);
-          setSavedPostUrls({});
-        } else {
-          throw new Error('La estrategia se creó sin un ID confirmado para guardar publicaciones.');
-        }
+      // La generación ya persiste la estrategia: guardar el ID devuelto, sin otro POST.
+      if (data?.strategy_id) {
+        const strategyId = String(data.strategy_id);
+        setActiveStrategyId(strategyId);
+        localStorage.setItem('active_strategy_id', strategyId);
+        // El estado de publicaciones guardadas pertenece a la estrategia seleccionada.
+        setSavedPostUrls({});
       }
     } catch (err: any) {
       setError(err.message || 'La generación de estrategia falló.');
@@ -145,59 +129,130 @@ export default function ProspectPage() {
     router.push('/');
   };
 
-const handleSavePostToStrategy = async (post: any) => {
-    const token = localStorage.getItem('jwt_token');
-    let stratId = activeStrategyId || localStorage.getItem('active_strategy_id');
-
-    // Si no hay ID en memoria, intentamos obtener la estrategia más reciente
-    if (!stratId) {
-      try {
-        const resStrats = await fetch(`${API_BASE_URL}/api/strategies`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const dataStrats = await resStrats.json();
-        const list = Array.isArray(dataStrats.strategies) ? dataStrats.strategies : [];
-        if (list.length > 0) {
-          stratId = list[0].id;
-          setActiveStrategyId(stratId);
-        if (stratId) {
-          localStorage.setItem('active_strategy_id', stratId);
-        }
-        }
-      } catch (e) {
-        console.error("Error buscando estrategia existente:", e);
-      }
-    }
-
-    if (!stratId) {
-      setError('Por favor genera primero una estrategia o crea una en "1. Estrategia & Oportunidades" para guardar este post.');
+  const handleSavePostToStrategy = async (post: any) => {
+    if (!post?.url) {
+      setError('La publicación no tiene una URL válida para guardarla.');
       return;
     }
 
+    const token = localStorage.getItem('jwt_token');
+    if (!token) {
+      setError('Tu sesión ha expirado. Inicia sesión nuevamente para guardar publicaciones.');
+      return;
+    }
+
+    if (savedPostUrls[post.url] || pendingPostUrlsRef.current.has(post.url)) return;
+    pendingPostUrlsRef.current.add(post.url);
+    setSavingPostUrls((prev) => ({ ...prev, [post.url]: true }));
+    setError(null);
+
     try {
-      const res = await fetch(`${API_BASE_URL}/api/strategies/${stratId}/posts`, {
+      let stratId = activeStrategyId || localStorage.getItem('active_strategy_id');
+
+      // Búsqueda rápida: recuperar la estrategia más reciente del usuario.
+      // Si la consulta confirma que no existe ninguna, crear una por defecto.
+      if (!stratId) {
+        if (!strategyResolutionRef.current) {
+          strategyResolutionRef.current = (async (): Promise<string> => {
+            const resStrats = await fetch(`${API_BASE_URL}/api/strategies`, {
+              method: 'GET',
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!resStrats.ok) {
+              const errData = await resStrats.json().catch(() => null);
+              throw new Error(errData?.detail || errData?.error ||
+                `No fue posible consultar tus estrategias (${resStrats.status}).`);
+            }
+
+            const dataStrats = await resStrats.json();
+            const list: any[] | null = Array.isArray(dataStrats?.strategies)
+              ? dataStrats.strategies
+              : Array.isArray(dataStrats) ? dataStrats : null;
+            if (!list) {
+              throw new Error('El servidor devolvió un formato inesperado al consultar estrategias.');
+            }
+
+            let resolvedId: string;
+            if (list.length > 0) {
+              // No suponer que el backend devuelve las estrategias ordenadas.
+              const mostRecent = [...list].sort((a, b) => {
+                const timeA = Date.parse(a?.created_at || '') || 0;
+                const timeB = Date.parse(b?.created_at || '') || 0;
+                return timeB - timeA;
+              })[0];
+              const id = mostRecent?.id ?? mostRecent?.strategy_id;
+              if (id === undefined || id === null || String(id).trim() === '') {
+                throw new Error('La estrategia más reciente no tiene un identificador válido.');
+              }
+              resolvedId = String(id);
+            } else {
+              // Crear una estrategia mínima sin invocar la generación de IA.
+              const hashtag = profileUsername.trim().replace(/^#/, '');
+              const resCreate = await fetch(`${API_BASE_URL}/api/strategies`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  niche: 'Estrategia por Defecto / Búsqueda Rápida',
+                  avatar: 'Prospectos encontrados mediante búsquedas directas en el Radar.',
+                  keywords: [],
+                  hashtags: hashtag ? [hashtag] : [],
+                }),
+              });
+              const createData = await resCreate.json().catch(() => null);
+              if (!resCreate.ok) {
+                throw new Error(createData?.detail || createData?.error ||
+                  `No fue posible crear la estrategia de Búsqueda Rápida (${resCreate.status}).`);
+              }
+              const id = createData?.strategy_id ?? createData?.id ?? createData?.strategy?.id;
+              if (id === undefined || id === null || String(id).trim() === '') {
+                throw new Error('Se recibió la creación de la estrategia sin un identificador confirmado.');
+              }
+              resolvedId = String(id);
+            }
+
+            setActiveStrategyId(resolvedId);
+            localStorage.setItem('active_strategy_id', resolvedId);
+            return resolvedId;
+          })();
+        }
+        try {
+          stratId = await strategyResolutionRef.current;
+        } finally {
+          // Un clic posterior puede reintentar tras un error de consulta/creación.
+          strategyResolutionRef.current = null;
+        }
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/strategies/${encodeURIComponent(stratId)}/posts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           url: post.url,
           caption: post.caption || '',
-          likesCount: post.likesCount || 0,
-          commentsCount: post.commentsCount || 0,
+          likesCount: post.likesCount ?? 0,
+          commentsCount: post.commentsCount ?? 0,
           ownerUsername: post.ownerUsername || '',
         }),
       });
 
-      if (res.ok) {
-        setSavedPostUrls((prev) => ({ ...prev, [post.url]: true }));
-      } else {
+      if (!res.ok) {
         const errData = await res.json().catch(() => null);
-        setError(errData?.detail || 'No se pudo guardar el post.');
+        throw new Error(errData?.detail || errData?.error ||
+          `No se pudo guardar la publicación (${res.status}).`);
       }
-    } catch (err: any) {
-      setError('Error al guardar el post en la estrategia.');
+      setSavedPostUrls((prev) => ({ ...prev, [post.url]: true }));
+    } catch (err: unknown) {
+      console.error('Error guardando post en estrategia:', err);
+      setError(err instanceof Error ? err.message : 'Error al guardar el post en la estrategia.');
+    } finally {
+      pendingPostUrlsRef.current.delete(post.url);
+      setSavingPostUrls((prev) => ({ ...prev, [post.url]: false }));
     }
   };
   return (
@@ -253,14 +308,14 @@ const handleSavePostToStrategy = async (post: any) => {
                     <button
                       type="button"
                       onClick={() => handleSavePostToStrategy(post)}
-                      disabled={!!savedPostUrls[post.url]}
+                      disabled={!!savedPostUrls[post.url] || !!savingPostUrls[post.url]}
                       className={`py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center border ${
-                        savedPostUrls[post.url]
+                        savedPostUrls[post.url] || savingPostUrls[post.url]
                           ? 'bg-sky-950/40 border-sky-600 text-sky-300 cursor-not-allowed'
                           : 'bg-[#0B121E] hover:bg-[#1E293B] border-[#24334A] text-slate-300 cursor-pointer'
                       }`}
                     >
-                      <span>{savedPostUrls[post.url] ? '✓ Guardado' : '💾 Guardar'}</span>
+                      <span>{savedPostUrls[post.url] ? '✓ Guardado' : savingPostUrls[post.url] ? 'Guardando...' : '💾 Guardar'}</span>
                     </button>
                   </div>
                 </div>
