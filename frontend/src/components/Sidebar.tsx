@@ -16,7 +16,7 @@ export default function Sidebar() {
     {
       phase: 'FASE 1: ESTRATEGIA & RADAR',
       items: [
-        { name: '1. Estrategia & Avatar', path: '/strategies', icon: '✦' },
+        { name: '1. Estrategia & Oportunidades', path: '/strategies', icon: '✦' },
         { name: '2. Radar de Prospectos', path: '/prospect', icon: '◎' },
       ],
     },
