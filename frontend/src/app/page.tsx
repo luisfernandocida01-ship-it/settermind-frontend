@@ -136,7 +136,13 @@ export default function Dashboard() {
 
       setPostDetails(data.post_details || data);
       // Normalización robusta para perfil
-      const extractedProfile = data.profile_analysis || data.profile || (data.niche ? { niche: data.niche, avatar: data.avatar } : null);
+      const extractedProfile = data.profile_analysis || data.profile || {
+        niche: data.niche,
+        avatar: data.avatar,
+        profesion: data.profesion,
+        objetivos: data.objetivos,
+        puntos_de_dolor: data.puntos_de_dolor
+      };
       setProfileAnalysis(extractedProfile);
       setStep(2);
     } catch (err: any) {
