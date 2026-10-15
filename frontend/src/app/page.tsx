@@ -535,19 +535,28 @@ export default function Dashboard() {
 
               return (
                 <div key={idx} className="bg-[#162032] border border-[#24334A] rounded-2xl p-5 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#24334A] pb-3">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-bold text-sky-400">@{lead.username}</span>
-                      <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${
-                        lead.intent === 'ALTA'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                          : lead.intent === 'MEDIA'
-                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                          : 'bg-slate-700/30 text-slate-400 border-slate-600'
-                      }`}>
-                        Intencion: {lead.intent} ({lead.confidence})
-                      </span>
+                  {/* Cabecera: Usuario a la izquierda y Score en Rojo arriba a la derecha */}
+                  <div className="flex items-center justify-between gap-4 border-b border-[#24334A] pb-3">
+                    <span className="text-sm font-bold text-sky-400">@{lead.username}</span>
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-rose-950/70 border border-rose-500 text-rose-300 shadow-sm shadow-rose-950">
+                      Score: {lead.potential_score ? `${lead.potential_score}/10` : (lead.confidence ? `${Math.round(lead.confidence / 10)}/10` : '9/10')}
+                    </span>
+                  </div>
+
+                  {/* Comentario Original y Recuadro Destacado de Dolor */}
+                  <div className="text-xs text-slate-300 bg-[#0B121E] p-4 rounded-xl border border-[#24334A] space-y-3">
+                    <div>
+                      <span className="font-semibold text-slate-400 block mb-1">Comentario original:</span>
+                      <p className="text-slate-200 italic leading-relaxed">"{lead.comment || lead.comment_text}"</p>
                     </div>
+
+                    {(lead.pain_point_identified || lead.intent) && (
+                      <div className="pt-2.5 border-t border-[#1E293B]">
+                        <span className="text-amber-400 font-semibold block mb-0.5">⚠️ Dolor / Necesidad Detectada:</span>
+                        <p className="text-slate-300 leading-relaxed">{lead.pain_point_identified || lead.intent}</p>
+                      </div>
+                    )}
+                  </div>
                   </div>
 
                   <div className="text-xs text-slate-300 bg-[#0B121E] p-3 rounded-xl border border-[#24334A]">
