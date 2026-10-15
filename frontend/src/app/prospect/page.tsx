@@ -249,6 +249,8 @@ export default function ProspectPage() {
       setSavedPostUrls((prev) => ({ ...prev, [post.url]: true }));
       // Remover únicamente la publicación guardada y conservar las restantes en pantalla
       setFoundPosts(foundPosts.filter((p: any) => p.url !== post.url));
+      // Remover únicamente la publicación guardada y conservar las restantes en pantalla
+      setFoundPosts(foundPosts.filter((p: any) => p.url !== post.url));
     } catch (err: unknown) {
       console.error('Error guardando post en estrategia:', err);
       setError(err instanceof Error ? err.message : 'Error al guardar el post en la estrategia.');

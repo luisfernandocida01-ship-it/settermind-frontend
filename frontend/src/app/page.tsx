@@ -32,6 +32,15 @@ export default function Dashboard() {
   const [savedLeads, setSavedLeads] = useState<{ [key: number]: boolean }>({});
   const [outboxSuccess, setOutboxSuccess] = useState<string | null>(null);
 
+  // Estados del Centro de Mando
+  const [dashboardStats, setDashboardStats] = useState({
+    totalStrategies: 0,
+    totalSavedPosts: 0,
+    totalOutboxLeads: 0,
+  });
+  const [recentSavedPosts, setRecentSavedPosts] = useState<any[]>([]);
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
+
   useEffect(() => {
     const token = localStorage.getItem('jwt_token');
     if (!token) {
@@ -44,6 +53,60 @@ export default function Dashboard() {
       setPostUrl(pendingUrl);
       localStorage.removeItem('url_to_analyze');
     }
+
+    const loadDashboardData = async () => {
+      setIsLoadingDashboard(true);
+      try {
+        const [stratRes, outboxRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/strategies`, {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          fetch(`${API_BASE_URL}/api/outbox`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        ]);
+
+        let stratCount = 0;
+        let postCount = 0;
+        let collectedPosts: any[] = [];
+
+        if (stratRes.ok) {
+          const stratData = await stratRes.json();
+          const strats = stratData.strategies || [];
+          stratCount = strats.length;
+          strats.forEach((s: any) => {
+            const posts = s.saved_posts || [];
+            postCount += posts.length;
+            posts.forEach((p: any) => {
+              collectedPosts.push({
+                ...p,
+                strategyTitle: s.niche || s.name || "Estrategia Activa",
+                strategyAvatar: s.avatar || "",
+                strategyNiche: s.niche || ""
+              });
+            });
+          });
+        }
+
+        let outboxCount = 0;
+        if (outboxRes.ok) {
+          const outData = await outboxRes.json();
+          outboxCount = (outData.leads || outData.items || []).length;
+        }
+
+        setDashboardStats({
+          totalStrategies: stratCount,
+          totalSavedPosts: postCount,
+          totalOutboxLeads: outboxCount,
+        });
+        setRecentSavedPosts(collectedPosts.slice(0, 4));
+      } catch (err) {
+        console.error("Error al cargar datos del Centro de Mando:", err);
+      } finally {
+        setIsLoadingDashboard(false);
+      }
+    };
+    loadDashboardData();
   }, [router]);
 
   // PASO 1: Obtener detalles del post y perfil
@@ -210,38 +273,163 @@ const handleAddToOutbox = async (leadIndex: number, lead: any) => {
 
       {/* PASO 1: Formulario URL */}
       {step === 1 && (
-        <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-8 shadow-xl max-w-2xl mx-auto">
-          <div className="text-center mb-6">
-            <span className="inline-block bg-sky-500/10 text-sky-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-sky-500/20 mb-2">
-              Paso 1
-            </span>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Pega la URL del Post</h1>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-              Ingresa el enlace de Instagram para extraer detalles y analizar comentarios.
-            </p>
+        <div className="space-y-8">
+          {/* Encabezado y bienvenida */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-[#162032] to-[#101726] border border-[#24334A] p-6 rounded-2xl shadow-xl">
+            <div>
+              <div className="flex items-center space-x-2 mb-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="text-xs uppercase tracking-wider font-bold text-emerald-400">Panel Activo</span>
+              </div>
+              <h1 className="text-2xl font-bold text-white tracking-tight">Centro de Mando del Setter</h1>
+              <p className="text-xs text-slate-400 mt-0.5">Control de prospección, análisis de contenido y seguimiento de conversaciones.</p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <button
+                type="button"
+                onClick={() => router.push("/prospect")}
+                className="bg-sky-600 hover:bg-sky-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition shadow-md flex items-center space-x-1.5 cursor-pointer"
+              >
+                <span>🎯 Radar de Prospectos</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/strategies")}
+                className="bg-[#1E293B] hover:bg-[#2B3A52] text-slate-200 border border-[#24334A] font-semibold px-4 py-2.5 rounded-xl text-xs transition flex items-center space-x-1.5 cursor-pointer"
+              >
+                <span>📁 Mis Estrategias</span>
+              </button>
+            </div>
           </div>
 
-          <form onSubmit={handleUrlSubmit} className="space-y-4">
-            <input
-              type="url"
-              required
-              value={postUrl}
-              onChange={(e) => setPostUrl(e.target.value)}
-              placeholder="https://www.instagram.com/p/..."
-              className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition"
-            />
-            <button
-              type="submit"
-              disabled={isLoadingDetails}
-              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition shadow-lg shadow-emerald-950/40 flex items-center justify-center space-x-2 disabled:opacity-60 cursor-pointer"
-            >
-              <span>{isLoadingDetails ? 'Extrayendo datos del post...' : 'Siguiente Paso →'}</span>
-            </button>
-          </form>
+          {/* 4 KPIs Clave */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-[#162032] border border-[#24334A] p-5 rounded-2xl shadow-lg">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Estrategias Guardadas</span>
+              <div className="text-3xl font-extrabold text-white">{dashboardStats.totalStrategies}</div>
+              <span className="text-[11px] text-sky-400 mt-1 block">Nichos activos</span>
+            </div>
+            <div className="bg-[#162032] border border-[#24334A] p-5 rounded-2xl shadow-lg">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Posts en Radar</span>
+              <div className="text-3xl font-extrabold text-emerald-400">{dashboardStats.totalSavedPosts}</div>
+              <span className="text-[11px] text-slate-400 mt-1 block">Oportunidades identificadas</span>
+            </div>
+            <div className="bg-[#162032] border border-[#24334A] p-5 rounded-2xl shadow-lg">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Bandeja de Salida</span>
+              <div className="text-3xl font-extrabold text-amber-400">{dashboardStats.totalOutboxLeads}</div>
+              <span className="text-[11px] text-slate-400 mt-1 block">Mensajes listos</span>
+            </div>
+            <div className="bg-[#162032] border border-[#24334A] p-5 rounded-2xl shadow-lg">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Tasa de Acción</span>
+              <div className="text-3xl font-extrabold text-purple-400">
+                {dashboardStats.totalSavedPosts > 0 ? "100%" : "0%"}
+              </div>
+              <span className="text-[11px] text-slate-400 mt-1 block">Rastreo activo</span>
+            </div>
+          </div>
+
+          {/* Seccion en 2 columnas: Analizador Rapido + Feed de Posts en Radar */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Columna Izquierda: Extraccion Manual Rapida */}
+            <div className="lg:col-span-5 bg-[#162032] border border-[#24334A] rounded-2xl p-6 shadow-xl space-y-4">
+              <div>
+                <span className="inline-block bg-sky-500/10 text-sky-400 text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-sky-500/20 mb-2">
+                  Herramienta Directa
+                </span>
+                <h2 className="text-lg font-bold text-white tracking-tight">Analizar Publicación Específica</h2>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Pega cualquier enlace público de Instagram para extraer sus comentarios y calificar leads.
+                </p>
+              </div>
+
+              <form onSubmit={handleUrlSubmit} className="space-y-4 pt-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">URL de Instagram</label>
+                  <input
+                    type="url"
+                    required
+                    value={postUrl}
+                    onChange={(e) => setPostUrl(e.target.value)}
+                    placeholder="https://www.instagram.com/p/..."
+                    className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 outline-none transition"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={isLoadingDetails}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-5 rounded-xl text-xs transition shadow-lg shadow-emerald-950/40 flex items-center justify-center space-x-2 disabled:opacity-60 cursor-pointer"
+                >
+                  <span>{isLoadingDetails ? "Extrayendo comentarios..." : "⚡ Analizar Publicación →"}</span>
+                </button>
+              </form>
+            </div>
+
+            {/* Columna Derecha: Oportunidades Listas para Analizar */}
+            <div className="lg:col-span-7 bg-[#162032] border border-[#24334A] rounded-2xl p-6 shadow-xl space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-[#24334A]">
+                <div>
+                  <h2 className="text-lg font-bold text-white tracking-tight">Publicaciones Listas para Análisis</h2>
+                  <p className="text-xs text-slate-400">Posts guardados desde tus búsquedas en el Radar.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push("/strategies")}
+                  className="text-xs font-semibold text-sky-400 hover:text-sky-300 transition"
+                >
+                  Ver todas →
+                </button>
+              </div>
+
+              {isLoadingDashboard ? (
+                <div className="py-12 text-center text-xs text-slate-400">Cargando oportunidades del radar...</div>
+              ) : recentSavedPosts.length > 0 ? (
+                <div className="space-y-3">
+                  {recentSavedPosts.map((p, i) => (
+                    <div key={i} className="bg-[#0B121E] border border-[#24334A] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-600 transition">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <span className="text-xs font-bold text-sky-400">@{p.ownerUsername || "cuenta"}</span>
+                          <span className="text-[10px] text-slate-500">•</span>
+                          <span className="text-[10px] text-slate-400">❤️ {p.likesCount ?? 0}</span>
+                          <span className="text-[10px] text-slate-400">💬 {p.commentsCount ?? 0}</span>
+                        </div>
+                        <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
+                          {p.caption || "Publicación guardada para extracción de leads."}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPostUrl(p.url);
+                          if (p.strategyNiche) setNiche(p.strategyNiche);
+                          if (p.strategyAvatar) setAvatar(p.strategyAvatar);
+                          const fakeEvent = { preventDefault: () => {} } as any;
+                          handleUrlSubmit(fakeEvent);
+                        }}
+                        className="shrink-0 bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold py-2 px-3 rounded-lg transition cursor-pointer"
+                      >
+                        ⚡ Analizar Ahora
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-8 text-center space-y-3">
+                  <p className="text-xs text-slate-400">Aún no tienes publicaciones guardadas en tus estrategias.</p>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/prospect")}
+                    className="inline-block bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold py-2 px-4 rounded-xl transition"
+                  >
+                    Ir al Radar y Guardar Posts →
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* PASO 2: Contexto y Congruencia */}
       {step === 2 && postDetails && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
