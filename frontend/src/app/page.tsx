@@ -24,7 +24,7 @@ export default function Dashboard() {
   const [niche, setNiche] = useState('');
   const [avatar, setAvatar] = useState('');
 
-  // Paso 3: Leads y selección de openers
+  // Paso 3: Leads y seleccion de openers
   const [leads, setLeads] = useState<any[]>([]);
   const [summary, setSummary] = useState<string>('');
   const [selectedOpeners, setSelectedOpeners] = useState<{ [key: number]: string }>({});
@@ -80,9 +80,9 @@ export default function Dashboard() {
             posts.forEach((p: any) => {
               collectedPosts.push({
                 ...p,
-                strategyTitle: s.niche || s.name || "Estrategia Activa",
-                strategyAvatar: s.avatar || "",
-                strategyNiche: s.niche || ""
+                strategyTitle: s.niche || s.name || 'Estrategia Activa',
+                strategyAvatar: s.avatar || '',
+                strategyNiche: s.niche || ''
               });
             });
           });
@@ -101,11 +101,12 @@ export default function Dashboard() {
         });
         setRecentSavedPosts(collectedPosts.slice(0, 4));
       } catch (err) {
-        console.error("Error al cargar datos del Centro de Mando:", err);
+        console.error('Error al cargar datos del Centro de Mando:', err);
       } finally {
         setIsLoadingDashboard(false);
       }
     };
+
     loadDashboardData();
   }, [router]);
 
@@ -133,25 +134,24 @@ export default function Dashboard() {
         throw new Error(data.detail || data.error || 'Error al obtener detalles del post');
       }
 
-      setPostDetails(data.post || data);
-      setProfileAnalysis(data.profile || null);
-
-      if (data.profile?.niche || data.niche) {
-        setNiche(typeof data.profile?.niche === 'string' ? data.profile.niche : data.niche || '');
-      }
-      if (data.profile?.avatar || data.avatar) {
-        setAvatar(typeof data.profile?.avatar === 'string' ? data.profile.avatar : data.avatar || '');
-      }
+      setPostDetails(data.post_details || data);
+      setProfileAnalysis(data.profile_analysis || null);
       setStep(2);
     } catch (err: any) {
-      setError(err.message || 'Error de conexión con el servidor');
+      setError(err.message || 'Error de conexion');
     } finally {
       setIsLoadingDetails(false);
     }
   };
 
-  // PASO 2: Analizar congruencia y extraer prospectos con IA
-  const handleAnalyzeCongruence = async () => {
+  // PASO 2: Extraer comentarios y clasificar leads con IA
+  const handleAnalyzeLeads = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!niche.trim() || !avatar.trim()) {
+      setError('Por favor completa tanto el nicho como el cliente ideal.');
+      return;
+    }
+
     setIsAnalyzingLeads(true);
     setError(null);
     const token = localStorage.getItem('jwt_token');
@@ -172,53 +172,40 @@ export default function Dashboard() {
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.detail || data.error || 'Error al analizar comentarios');
+        throw new Error(data.detail || data.error || 'Error al analizar comentarios y leads');
       }
 
-      const receivedLeads = data.leads || [];
-      setLeads(receivedLeads);
+      setLeads(data.leads || []);
       setSummary(data.summary || '');
 
-      // Inicializar el opener seleccionado por defecto (el primero de cada lead)
       const initialOpeners: { [key: number]: string } = {};
-      receivedLeads.forEach((lead: any, idx: number) => {
-        if (lead.suggested_openers && lead.suggested_openers.length > 0) {
-          initialOpeners[idx] = lead.suggested_openers[0];
+      (data.leads || []).forEach((lead: any, idx: number) => {
+        if (lead.openers && lead.openers.length > 0) {
+          initialOpeners[idx] = lead.openers[0];
         }
       });
       setSelectedOpeners(initialOpeners);
 
       setStep(3);
     } catch (err: any) {
-      setError(err.message || 'Error al generar análisis');
+      setError(err.message || 'Error de conexion');
     } finally {
       setIsAnalyzingLeads(false);
     }
   };
 
-  // PASO 3: Guardar en la bandeja de salida (Outbox)
-// PASO 3: Guardar en la bandeja de salida (Outbox)
-const handleAddToOutbox = async (leadIndex: number, lead: any) => {
-    const token = localStorage.getItem('jwt_token');
-    
-    // Asegurar que no vayan vacíos ni nulos
-    const opener = (selectedOpeners[leadIndex] || lead.suggested_openers?.[0] || 'Hola, ¿cómo estás?').trim();
-    const authorUsername = (lead.author || lead.username || lead.user || 'prospecto').trim();
-    const commentText = (lead.comment_text || lead.comment || 'Comentario de interés').trim();
-    const painText = (lead.pain_point_identified || 'Sin dolor registrado').trim();
-    const scoreVal = lead.potential_score ? String(lead.potential_score) : '7';
+  // PASO 3: Guardar lead en la bandeja de salida (Outbox)
+  const handleAddToOutbox = async (index: number, lead: any) => {
+    const chosenOpener = selectedOpeners[index] || (lead.openers && lead.openers[0]) || '';
+    if (!chosenOpener) {
+      setError('Por favor selecciona un rompehielos (opener) antes de guardar.');
+      return;
+    }
 
-    setSavingLeadIndex(leadIndex);
+    setSavingLeadIndex(index);
     setError(null);
-
-    const payload = {
-      post_url: postUrl || 'https://instagram.com',
-      prospect_username: authorUsername,
-      prospect_comment: commentText,
-      selected_opener: opener,
-      identified_pain: painText,
-      score: scoreVal,
-    };
+    setOutboxSuccess(null);
+    const token = localStorage.getItem('jwt_token');
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/outbox`, {
@@ -227,40 +214,52 @@ const handleAddToOutbox = async (leadIndex: number, lead: any) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          username: lead.username,
+          comment: lead.comment,
+          intent: lead.intent,
+          confidence: lead.confidence,
+          chosen_opener: chosenOpener,
+          post_url: postUrl.trim(),
+          product_context: {
+            niche: niche.trim(),
+            avatar: avatar.trim(),
+          },
+        }),
       });
 
+      const data = await response.json();
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.detail || 'No se pudo guardar en la bandeja de salida');
+        throw new Error(data.detail || data.error || 'No se pudo guardar en la bandeja de salida');
       }
 
-      setSavedLeads((prev) => ({ ...prev, [leadIndex]: true }));
-      setOutboxSuccess(`¡Lead #${leadIndex + 1} guardado correctamente en la Bandeja de Salida!`);
-      setTimeout(() => setOutboxSuccess(null), 3500);
+      setSavedLeads((prev) => ({ ...prev, [index]: true }));
+      setOutboxSuccess(`@${lead.username} agregado a la Bandeja de Salida.`);
     } catch (err: any) {
-      setError(`Error al guardar: ${err.message}`);
+      setError(err.message || 'Error al guardar el lead');
     } finally {
       setSavingLeadIndex(null);
     }
   };
 
   const handleReset = () => {
+    setPostUrl('');
     setStep(1);
     setPostDetails(null);
     setProfileAnalysis(null);
+    setNiche('');
+    setAvatar('');
     setLeads([]);
     setSelectedOpeners({});
     setSavedLeads({});
-    setSummary('');
-    setPostUrl('');
     setError(null);
+    setOutboxSuccess(null);
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-8">
+    <div className="w-full max-w-6xl mx-auto space-y-8 py-2">
       {error && (
-        <div className="bg-amber-950/40 border border-amber-700/60 text-amber-300 p-3 rounded-xl text-xs text-center">
+        <div className="bg-amber-950/40 border border-amber-700/60 text-amber-300 p-4 rounded-xl text-xs font-medium text-center">
           {error}
         </div>
       )}
@@ -271,7 +270,7 @@ const handleAddToOutbox = async (leadIndex: number, lead: any) => {
         </div>
       )}
 
-      {/* PASO 1: Formulario URL */}
+      {/* PASO 1: Centro de Mando del Setter */}
       {step === 1 && (
         <div className="space-y-8">
           {/* Encabezado y bienvenida */}
@@ -287,14 +286,14 @@ const handleAddToOutbox = async (leadIndex: number, lead: any) => {
             <div className="flex items-center space-x-3">
               <button
                 type="button"
-                onClick={() => router.push("/prospect")}
+                onClick={() => router.push('/prospect')}
                 className="bg-sky-600 hover:bg-sky-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition shadow-md flex items-center space-x-1.5 cursor-pointer"
               >
                 <span>🎯 Radar de Prospectos</span>
               </button>
               <button
                 type="button"
-                onClick={() => router.push("/strategies")}
+                onClick={() => router.push('/strategies')}
                 className="bg-[#1E293B] hover:bg-[#2B3A52] text-slate-200 border border-[#24334A] font-semibold px-4 py-2.5 rounded-xl text-xs transition flex items-center space-x-1.5 cursor-pointer"
               >
                 <span>📁 Mis Estrategias</span>
@@ -322,7 +321,7 @@ const handleAddToOutbox = async (leadIndex: number, lead: any) => {
             <div className="bg-[#162032] border border-[#24334A] p-5 rounded-2xl shadow-lg">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Tasa de Acción</span>
               <div className="text-3xl font-extrabold text-purple-400">
-                {dashboardStats.totalSavedPosts > 0 ? "100%" : "0%"}
+                {dashboardStats.totalSavedPosts > 0 ? '100%' : '0%'}
               </div>
               <span className="text-[11px] text-slate-400 mt-1 block">Rastreo activo</span>
             </div>
@@ -359,7 +358,7 @@ const handleAddToOutbox = async (leadIndex: number, lead: any) => {
                   disabled={isLoadingDetails}
                   className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-5 rounded-xl text-xs transition shadow-lg shadow-emerald-950/40 flex items-center justify-center space-x-2 disabled:opacity-60 cursor-pointer"
                 >
-                  <span>{isLoadingDetails ? "Extrayendo comentarios..." : "⚡ Analizar Publicación →"}</span>
+                  <span>{isLoadingDetails ? 'Extrayendo comentarios...' : '⚡ Analizar Publicación →'}</span>
                 </button>
               </form>
             </div>
@@ -373,7 +372,7 @@ const handleAddToOutbox = async (leadIndex: number, lead: any) => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => router.push("/strategies")}
+                  onClick={() => router.push('/strategies')}
                   className="text-xs font-semibold text-sky-400 hover:text-sky-300 transition"
                 >
                   Ver todas →
@@ -388,13 +387,13 @@ const handleAddToOutbox = async (leadIndex: number, lead: any) => {
                     <div key={i} className="bg-[#0B121E] border border-[#24334A] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-600 transition">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-1">
-                          <span className="text-xs font-bold text-sky-400">@{p.ownerUsername || "cuenta"}</span>
+                          <span className="text-xs font-bold text-sky-400">@{p.ownerUsername || 'cuenta'}</span>
                           <span className="text-[10px] text-slate-500">•</span>
                           <span className="text-[10px] text-slate-400">❤️ {p.likesCount ?? 0}</span>
                           <span className="text-[10px] text-slate-400">💬 {p.commentsCount ?? 0}</span>
                         </div>
                         <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
-                          {p.caption || "Publicación guardada para extracción de leads."}
+                          {p.caption || 'Publicación guardada para extracción de leads.'}
                         </p>
                       </div>
                       <button
@@ -418,7 +417,7 @@ const handleAddToOutbox = async (leadIndex: number, lead: any) => {
                   <p className="text-xs text-slate-400">Aún no tienes publicaciones guardadas en tus estrategias.</p>
                   <button
                     type="button"
-                    onClick={() => router.push("/prospect")}
+                    onClick={() => router.push('/prospect')}
                     className="inline-block bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold py-2 px-4 rounded-xl transition"
                   >
                     Ir al Radar y Guardar Posts →
@@ -430,6 +429,7 @@ const handleAddToOutbox = async (leadIndex: number, lead: any) => {
         </div>
       )}
 
+      {/* PASO 2: Contexto y Congruencia */}
       {step === 2 && postDetails && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
@@ -440,13 +440,13 @@ const handleAddToOutbox = async (leadIndex: number, lead: any) => {
               onClick={handleReset}
               className="bg-[#1E293B] hover:bg-[#334155] text-slate-200 text-xs font-bold py-2 px-4 rounded-xl transition border border-[#334155]"
             >
-              ← Analizar otro post
+              ← Volver al Centro de Mando
             </button>
           </div>
 
           <PostContextDisplay postDetails={postDetails} profileAnalysis={profileAnalysis} />
 
-          {/* Formulario único a lo ancho para Contexto de Producto */}
+          {/* Formulario unico a lo ancho para Contexto de Producto */}
           <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 space-y-4">
             <h2 className="text-sm font-bold text-white uppercase tracking-wider">Contexto de tu Producto / Oferta</h2>
             <div className="space-y-3">
@@ -456,80 +456,86 @@ const handleAddToOutbox = async (leadIndex: number, lead: any) => {
                   type="text"
                   value={niche}
                   onChange={(e) => setNiche(e.target.value)}
-                  placeholder="Ej: Creación de contenido y marketing digital"
-                  className="w-full bg-[#0B121E] border border-[#24334A] rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-sky-500"
+                  placeholder="Ej: Curso de Ventas con IA, Agencia de Automatizaciones..."
+                  className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition"
                 />
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Tu Cliente Ideal (Avatar):</label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={avatar}
                   onChange={(e) => setAvatar(e.target.value)}
-                  placeholder="Ej: Emprendedores, dueños de pequeñas empresas y creadores de contenido..."
-                  className="w-full bg-[#0B121E] border border-[#24334A] rounded-xl px-4 py-2 text-sm text-white outline-none focus:border-sky-500"
+                  placeholder="Ej: Emprendedores, consultores y duenos de negocio que quieren mas prospectos calificados..."
+                  className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition"
                 />
               </div>
             </div>
 
             <button
-              type="button"
-              onClick={handleAnalyzeCongruence}
-              disabled={isAnalyzingLeads}
-              className="w-full mt-4 bg-sky-600 hover:bg-sky-500 text-white font-bold py-3.5 px-6 rounded-xl text-sm transition shadow-lg shadow-sky-950/40 flex items-center justify-center space-x-2 disabled:opacity-60 cursor-pointer"
+              onClick={handleAnalyzeLeads}
+              disabled={isAnalyzingLeads || !niche.trim() || !avatar.trim()}
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl text-xs transition shadow-lg shadow-emerald-950/40 flex items-center justify-center space-x-2 disabled:opacity-60 cursor-pointer"
             >
-              <span>{isAnalyzingLeads ? 'Analizando comentarios con IA...' : '⚡ Generar análisis de congruencia y resultados'}</span>
+              <span>{isAnalyzingLeads ? 'Analizando comentarios con IA...' : 'Analizar Comentarios y Extraer Leads →'}</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* PASO 3: Oportunidades Identificadas */}
+      {/* PASO 3: Leads calificados y seleccion de Rompehielos */}
       {step === 3 && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <div>
-              <span className="inline-block bg-emerald-500/10 text-emerald-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-emerald-500/20 mb-1">
-                Paso 3: Oportunidades Identificadas
-              </span>
-              <p className="text-xs text-slate-400">{summary}</p>
-            </div>
+            <span className="inline-block bg-sky-500/10 text-sky-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-sky-500/20">
+              Paso 3: Leads Calificados ({leads.length})
+            </span>
             <button
-              onClick={() => setStep(2)}
+              onClick={handleReset}
               className="bg-[#1E293B] hover:bg-[#334155] text-slate-200 text-xs font-bold py-2 px-4 rounded-xl transition border border-[#334155]"
             >
-              ← Volver al paso 2
+              ← Volver al Centro de Mando
             </button>
           </div>
 
+          {summary && (
+            <div className="bg-[#162032] border border-[#24334A] p-4 rounded-xl text-xs text-slate-300">
+              {summary}
+            </div>
+          )}
+
           <div className="space-y-4">
-            {leads.map((lead, idx) => {
-              const currentSelectedOpener = selectedOpeners[idx] || lead.suggested_openers?.[0] || '';
+            {leads.map((lead: any, idx: number) => {
               const isSaved = !!savedLeads[idx];
               const isSaving = savingLeadIndex === idx;
 
               return (
-                <div key={idx} className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div className="bg-[#0B121E] border border-[#24334A] p-3 rounded-xl max-w-xl">
-                      <p className="text-xs text-slate-400 font-semibold mb-1">Comentario del prospecto:</p>
-                      <p className="text-sm text-slate-200 italic">"{lead.comment_text}"</p>
+                <div key={idx} className="bg-[#162032] border border-[#24334A] rounded-2xl p-5 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#24334A] pb-3">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-bold text-sky-400">@{lead.username}</span>
+                      <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${
+                        lead.intent === 'ALTA'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                          : lead.intent === 'MEDIA'
+                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                          : 'bg-slate-700/30 text-slate-400 border-slate-600'
+                      }`}>
+                        Intencion: {lead.intent} ({lead.confidence})
+                      </span>
                     </div>
-                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-bold px-3 py-1 rounded-full">
-                      Score: {lead.potential_score}/10
-                    </span>
                   </div>
 
-                  <div className="bg-sky-950/20 border border-sky-800/30 p-3 rounded-xl">
-                    <p className="text-xs text-sky-400 font-semibold mb-1">Dolor identificado:</p>
-                    <p className="text-xs text-slate-300">{lead.pain_point_identified}</p>
+                  <div className="text-xs text-slate-300 bg-[#0B121E] p-3 rounded-xl border border-[#24334A]">
+                    <span className="font-semibold text-slate-400 block mb-1">Comentario original:</span>
+                    "{lead.comment}"
                   </div>
 
-                  <div>
-                    <p className="text-xs text-slate-400 font-semibold mb-2">Selecciona un mensaje de apertura (Opener):</p>
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold text-slate-300 block">Selecciona un rompehielos (Opener):</span>
                     <div className="space-y-2">
-                      {lead.suggested_openers?.map((opener: string, oIdx: number) => {
-                        const isSelected = currentSelectedOpener === opener;
+                      {(lead.openers || []).map((opener: string, oIdx: number) => {
+                        const isSelected = selectedOpeners[idx] === opener;
                         return (
                           <div
                             key={oIdx}
