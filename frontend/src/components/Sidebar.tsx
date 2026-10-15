@@ -39,13 +39,13 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 bg-[#080E18] border-r border-[#1E293B] min-h-screen flex flex-col justify-between p-5 text-gray-200 shrink-0 shadow-xl z-20">
+    <aside className="w-64 bg-[#080E18] border-r border-[#1E293B] min-h-screen flex flex-col justify-between px-5 py-6 text-gray-200 shrink-0 shadow-xl z-20">
       <div>
         {/* Encabezado Marca */}
         <div className="mb-6 pb-5 border-b border-[#1E293B]">
           <div className="flex items-center space-x-3 mb-3">
-            <div className="w-11 h-11 rounded-xl bg-[#0B121E] border border-[#24334A] flex items-center justify-center overflow-hidden shrink-0 shadow-md">
-              <img src="/Logo-Mentes-Mercado.png" alt="SetterMind" className="w-full h-full object-contain scale-[1.45]" />
+            <div className="w-12 h-12 rounded-xl bg-[#0B121E] border border-[#24334A] flex items-center justify-center p-1 shrink-0 shadow-md">
+              <img src="/Logo-Mentes-Mercado.png" alt="SetterMind AI" className="w-full h-full object-contain drop-shadow-[0_2px_8px_rgba(217,119,6,0.3)]" />
             </div>
             <div>
               <h2 className="text-white font-extrabold text-base leading-tight tracking-wide">SetterMind AI</h2>
