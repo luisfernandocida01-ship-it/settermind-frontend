@@ -557,12 +557,6 @@ export default function Dashboard() {
                       </div>
                     )}
                   </div>
-                  </div>
-
-                  <div className="text-xs text-slate-300 bg-[#0B121E] p-3 rounded-xl border border-[#24334A]">
-                    <span className="font-semibold text-slate-400 block mb-1">Comentario original:</span>
-                    "{lead.comment}"
-                  </div>
 
                   <div className="space-y-2">
                     <span className="text-xs font-bold text-slate-300 block">Selecciona un rompehielos (Opener):</span>
