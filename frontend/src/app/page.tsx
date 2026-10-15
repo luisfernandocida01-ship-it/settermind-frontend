@@ -243,6 +243,8 @@ export default function Dashboard() {
           prospect_username: lead.username,
           comment: lead.comment || lead.comment_text,
           prospect_comment: lead.comment || lead.comment_text,
+          comment_id: lead.id || lead.comment_id || "",
+          comment_url: (lead.id || lead.comment_id) && postUrl ? `${postUrl.replace(/\/+$/, '')}/c/${lead.id || lead.comment_id}/` : '',
           intent: lead.intent,
           confidence: lead.confidence,
           score: lead.potential_score || (lead.confidence ? Math.round(lead.confidence / 10) : 9),

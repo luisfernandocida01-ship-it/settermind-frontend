@@ -54,6 +54,14 @@ export default function ConversationsPage() {
     }
   };
 
+    const handleOpenComment = (commentUrl: string | undefined, postUrl: string | undefined, openerText: string) => {
+    if (openerText) {
+      navigator.clipboard.writeText(openerText);
+    }
+    const targetUrl = commentUrl || postUrl || 'https://instagram.com';
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
+  };
+
   const handleCopyAndOpen = (username: string, opener: string) => {
     navigator.clipboard.writeText(opener);
     const cleanUser = username.replace(/^@/, '').trim();
@@ -174,14 +182,27 @@ export default function ConversationsPage() {
                   <p className="text-xs text-sky-100 font-medium">{item.selected_opener || item.opener || item.chosen_opener || 'Opener no disponible'}</p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+                  {/* Botón 1: Responder en Comentario Directo */}
+                  <button
+                    type="button"
+                    onClick={() => handleOpenComment(item.comment_url, item.post_url, item.selected_opener || item.opener || item.chosen_opener || '')}
+                    className="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center space-x-1.5 shadow-md cursor-pointer"
+                    title="Abre directamente el comentario y copia tu opener al portapapeles"
+                  >
+                    <span>💬 Responder Comentario</span>
+                  </button>
+
+                  {/* Botón 2: Enviar por DM Privado */}
                   <button
                     type="button"
                     onClick={() => handleCopyAndOpen(item.prospect_username, item.selected_opener || item.opener || item.chosen_opener || '')}
-                    className="flex-1 bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center space-x-2 shadow-md cursor-pointer"
+                    className="flex-1 bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center space-x-1.5 shadow-md cursor-pointer"
+                    title="Abre el perfil para enviar mensaje directo privado"
                   >
-                    <span>🚀 Copiar Opener y Abrir Instagram</span>
+                    <span>✉️ Abrir DM</span>
                   </button>
+
                   <button
                     type="button"
                     onClick={() => handleUpdateStatus(item.id, 'contactado')}
