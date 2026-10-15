@@ -171,13 +171,13 @@ export default function ConversationsPage() {
 
                 <div className="bg-sky-950/20 border border-sky-800/30 p-3.5 rounded-xl space-y-1">
                   <p className="text-[11px] font-semibold text-sky-300">Respuesta / Opener seleccionado:</p>
-                  <p className="text-xs text-sky-100 font-medium">{item.selected_opener}</p>
+                  <p className="text-xs text-sky-100 font-medium">{item.selected_opener || item.opener || item.chosen_opener || 'Opener no disponible'}</p>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => handleCopyAndOpen(item.prospect_username, item.selected_opener)}
+                    onClick={() => handleCopyAndOpen(item.prospect_username, item.selected_opener || item.opener || item.chosen_opener || '')}
                     className="flex-1 bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center space-x-2 shadow-md cursor-pointer"
                   >
                     <span>🚀 Copiar Opener y Abrir Instagram</span>
@@ -293,7 +293,7 @@ export default function ConversationsPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleCopyAndOpen(item.prospect_username, item.selected_opener)}
+                      onClick={() => handleCopyAndOpen(item.prospect_username, item.selected_opener || item.opener || item.chosen_opener || '')}
                       title="Abrir Chat de Instagram"
                       className="bg-[#0B121E] hover:bg-[#1E293B] border border-[#24334A] text-sky-400 p-2 rounded-xl text-xs transition cursor-pointer flex items-center justify-center"
                     >
