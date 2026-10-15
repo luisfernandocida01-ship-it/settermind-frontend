@@ -54,8 +54,8 @@ function RegisterForm() {
     <div className="w-full max-w-md space-y-6">
       {/* Branding SetterMind AI */}
       <div className="text-center space-y-2">
-        <div className="flex justify-center mb-2">
-          <img src="/Logo-Mentes-Mercado.png" alt="SetterMind AI" className="w-24 h-auto object-contain drop-shadow-[0_4px_14px_rgba(217,119,6,0.35)] mx-auto" />
+        <div className="flex justify-center mb-1 overflow-hidden py-1">
+          <img src="/Logo-Mentes-Mercado.png" alt="SetterMind AI" className="h-28 sm:h-32 w-auto object-contain drop-shadow-[0_8px_20px_rgba(217,119,6,0.4)] scale-125" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-white">SetterMind AI</h1>
         <p className="text-xs uppercase tracking-widest font-semibold text-slate-400">Activación de Licencia</p>

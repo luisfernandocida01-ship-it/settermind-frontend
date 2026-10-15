@@ -44,8 +44,8 @@ export default function Sidebar() {
         {/* Encabezado Marca */}
         <div className="mb-6 pb-5 border-b border-[#1E293B]">
           <div className="flex items-center space-x-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0E2A47] border border-[#F59E0B] text-[#FBBF24] font-black flex items-center justify-center text-xl shadow-md">
-              M
+            <div className="w-11 h-11 rounded-xl bg-[#0B121E] border border-[#24334A] flex items-center justify-center overflow-hidden shrink-0 shadow-md">
+              <img src="/Logo-Mentes-Mercado.png" alt="SetterMind" className="w-full h-full object-contain scale-[1.45]" />
             </div>
             <div>
               <h2 className="text-white font-extrabold text-base leading-tight tracking-wide">SetterMind AI</h2>
