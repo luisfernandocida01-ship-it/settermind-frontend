@@ -135,13 +135,13 @@ export default function Dashboard() {
       }
 
       setPostDetails(data.post_details || data);
-      // Normalización robusta para perfil
-      const extractedProfile = data.profile_analysis || data.profile || {
-        niche: data.niche,
-        avatar: data.avatar,
-        profesion: data.profesion,
-        objetivos: data.objetivos,
-        puntos_de_dolor: data.puntos_de_dolor
+      const prof = data.profile_analysis || data.profile || {};
+      const extractedProfile = {
+        niche: prof.niche || data.niche || 'No especificado',
+        avatar: prof.avatar || data.avatar || 'No especificado',
+        profesion: prof.profesion || data.profesion || '',
+        objetivos: prof.objetivos || data.objetivos || [],
+        puntos_de_dolor: prof.puntos_de_dolor || data.puntos_de_dolor || []
       };
       setProfileAnalysis(extractedProfile);
       setStep(2);
