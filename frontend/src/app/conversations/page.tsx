@@ -54,16 +54,21 @@ export default function ConversationsPage() {
     }
   };
 
-    const handleOpenComment = (commentUrl: string | undefined, postUrl: string | undefined, openerText: string) => {
+      const cleanOpener = (msg: string | undefined | null) => {
+    if (!msg) return '';
+    return msg.replace(/^opener\s*\d*\s*[:\-]?\s*/i, '').trim();
+  };
+
+  const handleOpenComment = (commentUrl: string | undefined, postUrl: string | undefined, openerText: string) => {
     if (openerText) {
-      navigator.clipboard.writeText(openerText);
+      navigator.clipboard.writeText(cleanOpener(openerText));
     }
     const targetUrl = commentUrl || postUrl || 'https://instagram.com';
     window.open(targetUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleCopyAndOpen = (username: string, opener: string) => {
-    navigator.clipboard.writeText(opener);
+    navigator.clipboard.writeText(cleanOpener(opener));
     const cleanUser = username.replace(/^@/, '').trim();
     window.open(`https://instagram.com/${cleanUser}/`, '_blank');
   };
@@ -179,7 +184,7 @@ export default function ConversationsPage() {
 
                 <div className="bg-sky-950/20 border border-sky-800/30 p-3.5 rounded-xl space-y-1">
                   <p className="text-[11px] font-semibold text-sky-300">Respuesta / Opener seleccionado:</p>
-                  <p className="text-xs text-sky-100 font-medium">{item.selected_opener || item.opener || item.chosen_opener || 'Opener no disponible'}</p>
+                  <p className="text-xs text-sky-100 font-medium">{cleanOpener(item.selected_opener || item.opener || item.chosen_opener) || 'Opener no disponible'}</p>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
