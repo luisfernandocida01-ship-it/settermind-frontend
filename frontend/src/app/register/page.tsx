@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { registerUser } from '@/lib/api';
 
 function RegisterForm() {
@@ -41,102 +42,125 @@ function RegisterForm() {
         api_key: apiKey.trim(),
       } as any);
 
-      alert('¡Cuenta activada con éxito! Ahora puedes iniciar sesión.');
       router.push('/login');
     } catch (err: any) {
-      setError(err?.message || 'Error al procesar el registro');
+      setError(err.message || 'Error durante el registro. Verifica tu clave de licencia.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-md">
-      <h1 className="text-4xl font-bold text-center mb-4">Crea tu Cuenta</h1>
-      
-      <form onSubmit={handleSubmit} className="bg-gray-800 p-8 rounded-lg shadow-lg">
+    <div className="w-full max-w-md space-y-6">
+      {/* Branding SetterMind AI */}
+      <div className="text-center space-y-2">
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#162032] border border-[#24334A] shadow-xl shadow-sky-950/20 mb-2">
+          <span className="text-2xl font-black text-amber-400">M</span>
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-white">SetterMind AI</h1>
+        <p className="text-xs uppercase tracking-widest font-semibold text-slate-400">Activación de Licencia</p>
+      </div>
+
+      {/* Tarjeta de Registro */}
+      <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
+        <div className="border-b border-[#24334A] pb-4 text-center">
+          <h2 className="text-lg font-bold text-white">Crear Cuenta de Setter</h2>
+          <p className="text-xs text-slate-400 mt-1">Ingresa tu clave de licencia Hotmart para habilitar tu acceso</p>
+        </div>
+
         {error && (
-          <div className="bg-red-500 text-white p-3 rounded-md mb-6 text-center text-sm">
+          <div className="bg-rose-950/40 border border-rose-800/60 text-rose-300 p-3 rounded-xl text-xs font-medium text-center">
             {error}
           </div>
         )}
 
-        <div className="mb-4">
-          <label htmlFor="username" className="block text-sm mb-1 font-medium text-gray-300">
-            Nombre de Usuario
-          </label>
-          <input
-            type="text"
-            id="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-            className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5 outline-none focus:border-blue-500"
-          />
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="apiKey" className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              Clave de Licencia (Hotmart)
+            </label>
+            <input
+              type="text"
+              id="apiKey"
+              required
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="SM-XXXX-XXXX-XXXX"
+              className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 outline-none transition font-mono"
+            />
+          </div>
 
-        <div className="mb-4">
-          <label htmlFor="email" className="block text-sm mb-1 font-medium text-gray-300">
-            Email
-          </label>
-          <input
-            type="email"
-            id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5 outline-none focus:border-blue-500"
-          />
-        </div>
+          <div>
+            <label htmlFor="username" className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              Nombre de Usuario o Alias
+            </label>
+            <input
+              type="text"
+              id="username"
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Ej: setter_pro"
+              className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 outline-none transition"
+            />
+          </div>
 
-        <div className="mb-4">
-          <label htmlFor="password" className="block text-sm mb-1 font-medium text-gray-300">
-            Contraseña
-          </label>
-          <input
-            type="password"
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg block w-full p-2.5 outline-none focus:border-blue-500"
-          />
-        </div>
+          <div>
+            <label htmlFor="email" className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              Correo Electrónico
+            </label>
+            <input
+              type="email"
+              id="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="tu@email.com"
+              className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 outline-none transition"
+            />
+          </div>
 
-        <div className="mb-6">
-          <label htmlFor="apiKey" className="block text-sm mb-1 font-medium text-gray-300">
-            Clave de Licencia (API Key SaaS)
-          </label>
-          <input
-            type="text"
-            id="apiKey"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            required
-            placeholder="sm_xxxxxxxx..."
-            className="bg-gray-700 border border-gray-600 text-cyan-400 font-mono text-sm rounded-lg block w-full p-2.5 outline-none focus:border-blue-500"
-          />
-          <p className="text-xs text-gray-400 mt-1">
-            Esta clave se genera automáticamente tras tu compra en Hotmart.
+          <div>
+            <label htmlFor="password" className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+              Contraseña
+            </label>
+            <input
+              type="password"
+              id="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 outline-none transition"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full mt-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-4 rounded-xl text-xs uppercase tracking-wider transition shadow-lg shadow-emerald-950/40 flex items-center justify-center space-x-2 disabled:opacity-60 cursor-pointer"
+          >
+            <span>{isLoading ? 'Activando cuenta...' : 'Activar Licencia e Iniciar →'}</span>
+          </button>
+        </form>
+
+        <div className="pt-2 border-t border-[#24334A] text-center">
+          <p className="text-xs text-slate-400">
+            ¿Ya activaste tu cuenta?{' '}
+            <Link href="/login" className="font-semibold text-sky-400 hover:text-sky-300 transition">
+              Inicia sesión aquí
+            </Link>
           </p>
         </div>
-
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition-colors disabled:opacity-50"
-        >
-          {isLoading ? 'Registrando...' : 'Activar Cuenta'}
-        </button>
-      </form>
+      </div>
     </div>
   );
 }
 
 export default function RegisterPage() {
   return (
-    <main className="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-8">
-      <Suspense fallback={<p className="text-gray-400">Cargando formulario...</p>}>
+    <main className="bg-[#0B121E] text-white min-h-screen flex flex-col items-center justify-center p-4 sm:p-6">
+      <Suspense fallback={<div className="text-xs text-slate-400">Cargando formulario de activación...</div>}>
         <RegisterForm />
       </Suspense>
     </main>
