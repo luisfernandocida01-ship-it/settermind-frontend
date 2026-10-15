@@ -33,7 +33,7 @@ export default function LoginPage() {
         {/* Branding SetterMind AI */}
         <div className="text-center space-y-2">
           <div className="flex justify-center mb-2">
-            <img src="/Logo-Mentes-Mercado.png" alt="SetterMind AI" className="h-16 w-auto object-contain drop-shadow-[0_4px_12px_rgba(234,179,8,0.2)]" />
+            <img src="/Logo-Mentes-Mercado.png" alt="SetterMind AI" className="w-24 h-auto object-contain drop-shadow-[0_4px_14px_rgba(217,119,6,0.35)] mx-auto" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white">SetterMind AI</h1>
           <p className="text-xs uppercase tracking-widest font-semibold text-slate-400">Mentes al Mercado</p>
