@@ -570,11 +570,12 @@ export default function Dashboard() {
                     <span className="text-xs font-bold text-slate-300 block">Selecciona un rompehielos (Opener):</span>
                     <div className="space-y-2">
                       {(lead.openers || []).map((opener: string, oIdx: number) => {
-                        const isSelected = selectedOpeners[idx] === opener;
+                        const cleanOpener = opener.replace(/^Opener\s*\d*\s*[:\-]?\s*/i, '');
+                        const isSelected = selectedOpeners[idx] === cleanOpener || selectedOpeners[idx] === opener;
                         return (
                           <div
                             key={oIdx}
-                            onClick={() => setSelectedOpeners((prev) => ({ ...prev, [idx]: opener }))}
+                            onClick={() => setSelectedOpeners((prev) => ({ ...prev, [idx]: cleanOpener }))}
                             className={`p-3 rounded-xl border text-xs cursor-pointer transition flex items-start space-x-2 ${
                               isSelected
                                 ? 'bg-sky-600/20 border-sky-500 text-white shadow-sm'
@@ -582,7 +583,7 @@ export default function Dashboard() {
                             }`}
                           >
                             <span className={`inline-block w-3 h-3 rounded-full mt-0.5 shrink-0 ${isSelected ? 'bg-sky-400 ring-2 ring-sky-500/40' : 'border border-slate-600'}`} />
-                            <span className="flex-1 leading-relaxed">{opener}</span>
+                            <span className="flex-1 leading-relaxed">{cleanOpener}</span>
                           </div>
                         );
                       })}
