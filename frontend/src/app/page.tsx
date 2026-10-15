@@ -135,7 +135,9 @@ export default function Dashboard() {
       }
 
       setPostDetails(data.post_details || data);
-      setProfileAnalysis(data.profile_analysis || null);
+      // Normalización robusta para perfil
+      const extractedProfile = data.profile_analysis || data.profile || (data.niche ? { niche: data.niche, avatar: data.avatar } : null);
+      setProfileAnalysis(extractedProfile);
       setStep(2);
     } catch (err: any) {
       setError(err.message || 'Error de conexion');
@@ -175,11 +177,27 @@ export default function Dashboard() {
         throw new Error(data.detail || data.error || 'Error al analizar comentarios y leads');
       }
 
-      setLeads(data.leads || []);
+      // Normalización completa de cada lead para el renderizado
+      const rawLeads = data.leads || [];
+      const normalizedLeads = rawLeads.map((l: any) => {
+        const comment = l.comment || l.comment_text || l.prospect_comment || l.text || '';
+        const openers = l.openers || l.suggested_openers || [];
+        const intent = l.intent || l.pain_point_identified || l.identified_pain || 'Alta intención';
+        const username = (l.username || l.user || 'prospecto').replace('@', '');
+        return {
+          ...l,
+          username,
+          comment,
+          openers,
+          intent
+        };
+      });
+
+      setLeads(normalizedLeads);
       setSummary(data.summary || '');
 
       const initialOpeners: { [key: number]: string } = {};
-      (data.leads || []).forEach((lead: any, idx: number) => {
+      normalizedLeads.forEach((lead: any, idx: number) => {
         if (lead.openers && lead.openers.length > 0) {
           initialOpeners[idx] = lead.openers[0];
         }
