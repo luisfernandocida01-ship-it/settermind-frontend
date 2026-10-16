@@ -1,108 +1,124 @@
-// frontend/src/app/conversations/page.tsx
+//src/app/conversations/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://settermind-flask-template.onrender.com';
+interface OutboxItem {
+  id: string;
+  post_url?: string;
+  comment_id?: string;
+  comment_url?: string;
+  prospect_username: string;
+  prospect_comment: string;
+  identified_pain?: string;
+  selected_opener?: string;
+  opener?: string;
+  chosen_opener?: string;
+  score?: number | string;
+  status?: string;
+  notes?: string;
+  created_at?: string;
+}
 
-const STATUS_CONFIG: Record<string, { label: string; badge: string; border: string }> = {
-  iniciado: { label: 'Iniciado', badge: 'bg-blue-500/15 text-blue-400 border-blue-500/30', border: 'border-blue-500/30' },
-  contactado: { label: 'Contactado', badge: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30', border: 'border-indigo-500/30' },
-  respondio: { label: 'Respondió', badge: 'bg-amber-500/15 text-amber-400 border-amber-500/30', border: 'border-amber-500/30' },
-  cualificado: { label: 'Cualificado', badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', border: 'border-emerald-500/30' },
-  cerrado: { label: 'Cerrado (Ganado)', badge: 'bg-teal-500/15 text-teal-300 border-teal-500/30', border: 'border-teal-500/30' },
+const STATUS_CONFIG: Record<string, { label: string; border: string }> = {
+  iniciado: { label: 'Iniciado', border: 'border-slate-700' },
+  contactado: { label: 'Contactado', border: 'border-sky-500/40' },
+  respondio: { label: 'Respondió', border: 'border-amber-500/40' },
+  cualificado: { label: 'Cualificado', border: 'border-indigo-500/40' },
+  cerrado: { label: 'Cerrado', border: 'border-emerald-500/40' },
 };
 
 export default function ConversationsPage() {
-  const router = useRouter();
-  const [pendingItems, setPendingItems] = useState<any[]>([]);
-  const [trackedItems, setTrackedItems] = useState<any[]>([]);
+  const [items, setItems] = useState<OutboxItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Estados para notas editables
-  const [editingNotes, setEditingNotes] = useState<{ [id: string]: string }>({});
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
+  const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
+  const [showGHLModal, setShowGHLModal] = useState(false);
 
-  useEffect(() => {
-    const token = localStorage.getItem('jwt_token');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-    fetchConversations(token);
-  }, [router]);
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://settermind-flask-template.onrender.com';
+
+  const cleanOpener = (msg: string | undefined | null) => {
+    if (!msg) return '';
+    return msg.replace(/^opener\s*\d*\s*[:\-]?\s*/i, '').trim();
+  };
 
   const fetchConversations = async (token: string) => {
     try {
       setIsLoading(true);
+      setError(null);
       const res = await fetch(`${API_BASE_URL}/api/outbox`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('No se pudo cargar la bandeja');
+      if (!res.ok) {
+        throw new Error('Error al cargar conversaciones');
+      }
       const data = await res.json();
-      const list = Array.isArray(data.items) ? data.items : Array.isArray(data) ? data : [];
-      
-      // Separar: 'pending' va a Bandeja de Salida; el resto al CRM de Seguimiento
-      setPendingItems(list.filter((item: any) => !item.status || item.status === 'pending'));
-      setTrackedItems(list.filter((item: any) => item.status && item.status !== 'pending'));
+      setItems(Array.isArray(data) ? data : []);
     } catch (err: any) {
-      setError(err.message || 'Error al obtener datos');
+      setError(err.message || 'Error de conexión');
     } finally {
       setIsLoading(false);
     }
   };
 
-      const cleanOpener = (msg: string | undefined | null) => {
-    if (!msg) return '';
-    return msg.replace(/^opener\s*\d*\s*[:\-]?\s*/i, '').trim();
-  };
-
-      const [showGHLModal, setShowGHLModal] = useState(false);
-
-  // Función para descargar Leads en Seguimiento a CSV
-  const handleExportCSV = () => {
-    const listToExport = trackedItems && trackedItems.length > 0 ? trackedItems : items;
-    if (!listToExport || listToExport.length === 0) {
-      alert("No hay prospectos en seguimiento para exportar.");
-      return;
+  useEffect(() => {
+    const token = localStorage.getItem('jwt_token');
+    if (token) {
+      fetchConversations(token);
+    } else {
+      setIsLoading(false);
     }
+  }, []);
 
-    const headers = ["Usuario", "Comentario Original", "Dolor Detectado", "Opener Utilizado", "Etapa", "Notas", "Score", "Fecha"];
-    const rows = listToExport.map((item: any) => [
-      `"${(item.prospect_username || '').replace(/"/g, '""')}"`,
-      `"${(item.prospect_comment || '').replace(/"/g, '""')}"`,
-      `"${(item.identified_pain || '').replace(/"/g, '""')}"`,
-      `"${(cleanOpener(item.selected_opener || item.opener || item.chosen_opener) || '').replace(/"/g, '""')}"`,
-      `"${(item.status || 'Contactado').replace(/"/g, '""')}"`,
-      `"${(notes[item.id] || item.notes || '').replace(/"/g, '""')}"`,
-      `"${item.score || 9}"`,
-      `"${new Date().toLocaleDateString()}"`
-    ]);
+  const handleUpdateStatus = async (id: string, newStatus: string) => {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) return;
 
-    const newline = String.fromCharCode(10);
-    const csvContent = "data:text/csv;charset=utf-8,﻿" + [headers.join(","), ...rows.map(e => e.join(","))].join(newline);
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `settermind_leads_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/outbox/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error('No se pudo actualizar el estado');
+      setItems((prev) =>
+        prev.map((it) => (it.id === id ? { ...it, status: newStatus } : it))
+      );
+    } catch (err: any) {
+      alert(err.message || 'Error actualizando estado');
+    }
   };
 
-  const [notes, setNotes]ncodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `settermind_leads_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const handleSaveNotes = async (id: string) => {
+    const token = localStorage.getItem('jwt_token');
+    if (!token) return;
 
-  // Estado para el modal de GoHighLevel
-  const [showGHLModal, setShowGHLModal] = useState(false);
+    const noteToSave = editingNotes[id] ?? '';
+    try {
+      setSavingNoteId(id);
+      const res = await fetch(`${API_BASE_URL}/api/outbox/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ notes: noteToSave }),
+      });
+      if (!res.ok) throw new Error('No se pudo guardar la nota');
+      setItems((prev) =>
+        prev.map((it) => (it.id === id ? { ...it, notes: noteToSave } : it))
+      );
+    } catch (err: any) {
+      alert(err.message || 'Error guardando notas');
+    } finally {
+      setSavingNoteId(null);
+    }
+  };
 
   const handleOpenComment = (commentUrl: string | undefined, postUrl: string | undefined, openerText: string) => {
     if (openerText) {
@@ -113,55 +129,51 @@ export default function ConversationsPage() {
   };
 
   const handleCopyAndOpen = (username: string, opener: string) => {
-    navigator.clipboard.writeText(cleanOpener(opener));
-    const cleanUser = username.replace(/^@/, '').trim();
-    window.open(`https://instagram.com/${cleanUser}/`, '_blank');
+    if (opener) {
+      navigator.clipboard.writeText(cleanOpener(opener));
+    }
+    const cleanUser = username.replace(/^@/, '');
+    window.open(`https://instagram.com/${cleanUser}/`, '_blank', 'noopener,noreferrer');
   };
 
-  const handleUpdateStatus = async (id: string, newStatus: string) => {
-    const token = localStorage.getItem('jwt_token');
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/outbox/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (res.ok) {
-        if (token) fetchConversations(token);
-      }
-    } catch (e) {
-      console.error('Error al actualizar estado:', e);
-    }
-  };
+  const pendingItems = items.filter((it) => !it.status || it.status.toLowerCase() === 'pending');
+  const trackedItems = items.filter((it) => it.status && it.status.toLowerCase() !== 'pending');
 
-  const handleSaveNotes = async (id: string) => {
-    const token = localStorage.getItem('jwt_token');
-    const noteText = editingNotes[id] ?? '';
-    setSavingNoteId(id);
-    try {
-      await fetch(`${API_BASE_URL}/api/outbox/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ notes: noteText }),
-      });
-    } catch (e) {
-      console.error('Error al guardar notas:', e);
-    } finally {
-      setSavingNoteId(null);
+  const handleExportCSV = () => {
+    const listToExport = trackedItems.length > 0 ? trackedItems : items;
+    if (!listToExport || listToExport.length === 0) {
+      alert('No hay prospectos para exportar.');
+      return;
     }
+
+    const headers = ['Usuario', 'Comentario Original', 'Dolor Detectado', 'Opener Utilizado', 'Etapa', 'Notas', 'Score', 'Fecha'];
+    const rows = listToExport.map((item) => [
+      `"${(item.prospect_username || '').replace(/"/g, '""')}"`,
+      `"${(item.prospect_comment || '').replace(/"/g, '""')}"`,
+      `"${(item.identified_pain || '').replace(/"/g, '""')}"`,
+      `"${(cleanOpener(item.selected_opener || item.opener || item.chosen_opener) || '').replace(/"/g, '""')}"`,
+      `"${(item.status || 'Contactado').replace(/"/g, '""')}"`,
+      `"${(editingNotes[item.id] ?? item.notes ?? '').replace(/"/g, '""')}"`,
+      `"${item.score || 9}"`,
+      `"${new Date().toLocaleDateString()}"`,
+    ]);
+
+    const newline = String.fromCharCode(10);
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map((e) => e.join(','))].join(newline);
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `settermind_leads_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-12 py-4">
       {/* SECCIÓN 1: BANDEJA DE SALIDA (PENDIENTES) */}
       <section className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#24334A] pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <span className="inline-block bg-sky-500/10 text-sky-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-sky-500/20 mb-2">
               Fase 2 • Ejecución Diaria
@@ -179,14 +191,14 @@ export default function ConversationsPage() {
               const token = localStorage.getItem('jwt_token');
               if (token) fetchConversations(token);
             }}
-            className="bg-[#1E293B] hover:bg-[#334155] text-slate-200 text-xs font-semibold py-2 px-4 rounded-xl border border-[#334155] transition cursor-pointer self-start sm:self-auto"
+            className="bg-[#1E293B] hover:bg-[#334155] text-slate-200 text-xs font-semibold px-4 py-2 rounded-xl border border-[#334155] transition flex items-center space-x-1 cursor-pointer"
           >
-            ↻ Actualizar Bandeja
+            <span>↻ Actualizar Bandeja</span>
           </button>
         </div>
 
         {error && (
-          <div className="bg-amber-950/40 border border-amber-700/60 text-amber-300 p-3 rounded-xl text-xs text-center">
+          <div className="bg-amber-950/40 border border-amber-700/60 text-amber-300 p-4 rounded-xl text-xs">
             {error}
           </div>
         )}
@@ -208,11 +220,9 @@ export default function ConversationsPage() {
                       @{item.prospect_username?.replace(/^@/, '') || 'prospecto'}
                     </span>
                   </div>
-                  {item.score && (
-                    <span className="text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
-                      Score: {item.score}
-                    </span>
-                  )}
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-rose-950/70 border border-rose-500 text-rose-300 shadow-sm shadow-rose-950">
+                    Score: {item.score ? (Number(item.score) > 10 ? Math.round(Number(item.score) / 10) : item.score) : 9}/10
+                  </span>
                 </div>
 
                 <div className="bg-[#0B121E] border border-[#24334A] p-3.5 rounded-xl space-y-1">
@@ -233,7 +243,6 @@ export default function ConversationsPage() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
-                  {/* Botón 1: Responder en Comentario Directo */}
                   <button
                     type="button"
                     onClick={() => handleOpenComment(item.comment_url, item.post_url, item.selected_opener || item.opener || item.chosen_opener || '')}
@@ -243,7 +252,6 @@ export default function ConversationsPage() {
                     <span>💬 Responder Comentario</span>
                   </button>
 
-                  {/* Botón 2: Enviar por DM Privado */}
                   <button
                     type="button"
                     onClick={() => handleCopyAndOpen(item.prospect_username, item.selected_opener || item.opener || item.chosen_opener || '')}
@@ -256,7 +264,7 @@ export default function ConversationsPage() {
                   <button
                     type="button"
                     onClick={() => handleUpdateStatus(item.id, 'contactado')}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center space-x-1 cursor-pointer"
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center space-x-1.5 shadow-md cursor-pointer"
                   >
                     <span>✓ Marcar Contactado</span>
                   </button>
@@ -269,7 +277,7 @@ export default function ConversationsPage() {
 
       {/* SECCIÓN 2: CRM INTERNO (SEGUIMIENTO Y PIPELINE) */}
       <section className="space-y-6 pt-4 border-t border-[#24334A]">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <span className="inline-block bg-indigo-500/10 text-indigo-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-indigo-500/20 mb-2">
               Fase 2 • Pipeline & CRM Interno
@@ -282,7 +290,6 @@ export default function ConversationsPage() {
             </p>
           </div>
 
-          {/* Botones de Exportar CSV y GoHighLevel */}
           <div className="flex items-center gap-2.5">
             <button
               type="button"
@@ -317,20 +324,19 @@ export default function ConversationsPage() {
               return (
                 <div
                   key={item.id}
-                  className={`bg-[#162032] border ${badgeConfig.border} rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-lg`}
+                  className={`bg-[#162032] border ${badgeConfig.border} rounded-2xl p-5 space-y-4 shadow-lg`}
                 >
                   <div className="space-y-3">
-                    {/* Header de la tarjeta */}
                     <div className="flex justify-between items-center">
                       <a
-                        href={`https://instagram.com/${item.prospect_username?.replace(/^@/, '')}/`}
+                        href={`https://instagram.com/${item.prospect_username?.replace(/^@/, '') || ''}`}
                         target="_blank"
                         rel="noreferrer"
                         className="text-sm font-bold text-sky-400 hover:underline"
                       >
                         @{item.prospect_username?.replace(/^@/, '') || 'prospecto'}
                       </a>
-                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${badgeConfig.badge}`}>
+                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${badgeConfig.border} text-slate-300`}>
                         {badgeConfig.label}
                       </span>
                     </div>
@@ -339,7 +345,6 @@ export default function ConversationsPage() {
                       "{item.prospect_comment}"
                     </p>
 
-                    {/* Selector de Estado del CRM */}
                     <div>
                       <label className="block text-[11px] font-semibold text-slate-400 mb-1">
                         Etapa de Conversación:
@@ -347,7 +352,7 @@ export default function ConversationsPage() {
                       <select
                         value={currentSt}
                         onChange={(e) => handleUpdateStatus(item.id, e.target.value)}
-                        className="w-full bg-[#0B121E] border border-[#24334A] text-slate-200 text-xs rounded-xl px-3 py-2 outline-none focus:border-indigo-500 cursor-pointer"
+                        className="w-full bg-[#0B121E] border border-[#24334A] text-slate-200 text-xs rounded-xl p-2 outline-none focus:border-indigo-500 transition"
                       >
                         <option value="iniciado">Iniciado</option>
                         <option value="contactado">Contactado</option>
@@ -357,7 +362,6 @@ export default function ConversationsPage() {
                       </select>
                     </div>
 
-                    {/* Notas Internas */}
                     <div>
                       <label className="block text-[11px] font-semibold text-slate-400 mb-1">
                         Notas del Prospecto:
@@ -374,7 +378,6 @@ export default function ConversationsPage() {
                     </div>
                   </div>
 
-                  {/* Acciones de la tarjeta */}
                   <div className="flex gap-2 pt-2 border-t border-[#24334A]/80">
                     <button
                       type="button"
@@ -398,6 +401,42 @@ export default function ConversationsPage() {
           </div>
         )}
       </section>
+
+      {/* Modal Teaser: GoHighLevel CRM */}
+      {showGHLModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+          <div className="bg-[#111C2E] border border-[#24334A] rounded-2xl p-6 max-w-md w-full shadow-2xl relative space-y-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-2xl shadow-lg">
+              ⚡
+            </div>
+            
+            <div>
+              <div className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 mb-2">
+                Próximamente • Plan Pro
+              </div>
+              <h3 className="text-lg font-bold text-white">Sincronización Directa GoHighLevel</h3>
+              <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                Podrás inyectar cada prospecto automáticamente en tus <strong>Pipelines, Oportunidades y Workflows de GoHighLevel</strong> con sus etiquetas, dolor detectado y opener en 1 solo clic.
+              </p>
+            </div>
+
+            <div className="bg-[#0B121E] border border-[#24334A] p-3 rounded-xl text-xs text-slate-400 space-y-1">
+              <p className="text-slate-300 font-semibold">💡 Mientras tanto:</p>
+              <p>Usa el botón <strong>"Exportar a CSV"</strong> para cargar tus contactos directamente al módulo de Contactos de GoHighLevel.</p>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowGHLModal(false)}
+                className="w-full bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition cursor-pointer"
+              >
+                Entendido, ¡gracias!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
