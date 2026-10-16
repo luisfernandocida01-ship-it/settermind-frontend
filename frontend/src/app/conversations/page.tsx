@@ -59,6 +59,51 @@ export default function ConversationsPage() {
     return msg.replace(/^opener\s*\d*\s*[:\-]?\s*/i, '').trim();
   };
 
+      const [showGHLModal, setShowGHLModal] = useState(false);
+
+  // Función para descargar Leads en Seguimiento a CSV
+  const handleExportCSV = () => {
+    const listToExport = trackedItems && trackedItems.length > 0 ? trackedItems : items;
+    if (!listToExport || listToExport.length === 0) {
+      alert("No hay prospectos en seguimiento para exportar.");
+      return;
+    }
+
+    const headers = ["Usuario", "Comentario Original", "Dolor Detectado", "Opener Utilizado", "Etapa", "Notas", "Score", "Fecha"];
+    const rows = listToExport.map((item: any) => [
+      `"${(item.prospect_username || '').replace(/"/g, '""')}"`,
+      `"${(item.prospect_comment || '').replace(/"/g, '""')}"`,
+      `"${(item.identified_pain || '').replace(/"/g, '""')}"`,
+      `"${(cleanOpener(item.selected_opener || item.opener || item.chosen_opener) || '').replace(/"/g, '""')}"`,
+      `"${(item.status || 'Contactado').replace(/"/g, '""')}"`,
+      `"${(notes[item.id] || item.notes || '').replace(/"/g, '""')}"`,
+      `"${item.score || 9}"`,
+      `"${new Date().toLocaleDateString()}"`
+    ]);
+
+    const newline = String.fromCharCode(10);
+    const csvContent = "data:text/csv;charset=utf-8,﻿" + [headers.join(","), ...rows.map(e => e.join(","))].join(newline);
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `settermind_leads_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const [notes, setNotes]ncodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `settermind_leads_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Estado para el modal de GoHighLevel
+  const [showGHLModal, setShowGHLModal] = useState(false);
+
   const handleOpenComment = (commentUrl: string | undefined, postUrl: string | undefined, openerText: string) => {
     if (openerText) {
       navigator.clipboard.writeText(cleanOpener(openerText));
@@ -224,7 +269,7 @@ export default function ConversationsPage() {
 
       {/* SECCIÓN 2: CRM INTERNO (SEGUIMIENTO Y PIPELINE) */}
       <section className="space-y-6 pt-4 border-t border-[#24334A]">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <span className="inline-block bg-indigo-500/10 text-indigo-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-indigo-500/20 mb-2">
               Fase 2 • Pipeline & CRM Interno
@@ -235,6 +280,27 @@ export default function ConversationsPage() {
             <p className="text-xs text-slate-400 mt-0.5">
               Controla las etapas de cada prospecto contactado, registra anotaciones y prepara el cierre.
             </p>
+          </div>
+
+          {/* Botones de Exportar CSV y GoHighLevel */}
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="px-3.5 py-2.5 bg-[#1E293B] hover:bg-[#2A3B53] text-slate-200 border border-[#334155] rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+              title="Exportar base de leads en seguimiento a formato Excel / CSV"
+            >
+              <span>📥 Exportar a CSV</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowGHLModal(true)}
+              className="px-3.5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-950/40 transition cursor-pointer"
+              title="Sincronizar directamente con GoHighLevel CRM"
+            >
+              <span>⚡ Enviar a GoHighLevel</span>
+            </button>
           </div>
         </div>
 
