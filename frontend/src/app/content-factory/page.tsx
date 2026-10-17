@@ -42,7 +42,7 @@ export default function ContentFactoryPage() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          highlight_title: 'HIGHLIGHT 1: EMPIEZA AQUÍ',
+          highlight_title: activeTab === 'spark' ? 'Chispa Creativa (Ideas Diarias)' : 'Director de Highlights',
           script_content: generatedContent || ''
         })
       });
@@ -172,7 +172,7 @@ export default function ContentFactoryPage() {
         )}
 
         {/* 1. Director de Highlights */}
-        {activeTab === 'highlights' && (
+        {(activeTab === 'highlights' || activeTab === 'spark') && (
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -370,7 +370,7 @@ export default function ContentFactoryPage() {
               Resultado Generado por IA
             </span>
             <div className="flex items-center space-x-2">
-              {activeTab === 'highlights' && (
+              {(activeTab === 'highlights' || activeTab === 'spark') && (
                 <button
                   type="button"
                   onClick={handleGenerateMultimedia}
