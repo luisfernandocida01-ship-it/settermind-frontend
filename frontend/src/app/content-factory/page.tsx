@@ -172,7 +172,7 @@ export default function ContentFactoryPage() {
         )}
 
         {/* 1. Director de Highlights */}
-        {(activeTab === 'highlights' || activeTab === 'spark') && (
+        {activeTab === 'highlights' && (
           <form
             onSubmit={(e) => {
               e.preventDefault();
