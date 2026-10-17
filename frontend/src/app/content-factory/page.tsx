@@ -42,9 +42,8 @@ export default function ContentFactoryPage() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          name: name || 'Mi Marca',
-          method_name: methodName || 'Método Consultivo 3 Fases',
-          topic: mission || 'Prospección Orgánica y Cualificación High-Ticket'
+          highlight_title: 'HIGHLIGHT 1: EMPIEZA AQUÍ',
+          script_content: generatedContent || ''
         })
       });
       if (!res.ok) throw new Error('Error al generar prompts multimedia.');
