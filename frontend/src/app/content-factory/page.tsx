@@ -25,6 +25,44 @@ export default function ContentFactoryPage() {
   const [generatedContent, setGeneratedContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [multimediaPrompts, setMultimediaPrompts] = useState<string | null>(null);
+  const [loadingMultimedia, setLoadingMultimedia] = useState(false);
+  const [copiedMultimedia, setCopiedMultimedia] = useState(false);
+
+  const handleGenerateMultimedia = async () => {
+    setLoadingMultimedia(true);
+    setMultimediaPrompts(null);
+    try {
+      const token = localStorage.getItem('jwt_token');
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://settermind-flask-template.onrender.com';
+      const res = await fetch(`${API_URL}/api/generate-multimedia-prompts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: name || 'Mi Marca',
+          method_name: methodName || 'Método Consultivo 3 Fases',
+          topic: mission || 'Prospección Orgánica y Cualificación High-Ticket'
+        })
+      });
+      if (!res.ok) throw new Error('Error al generar prompts multimedia.');
+      const data = await res.json();
+      setMultimediaPrompts(typeof data === 'string' ? data : data.result || JSON.stringify(data, null, 2));
+    } catch (err: any) {
+      alert(err.message || 'Error al conectar con el servidor.');
+    } finally {
+      setLoadingMultimedia(false);
+    }
+  };
+
+  const handleCopyMultimedia = () => {
+    if (!multimediaPrompts) return;
+    navigator.clipboard.writeText(multimediaPrompts);
+    setCopiedMultimedia(true);
+    setTimeout(() => setCopiedMultimedia(false), 2000);
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('jwt_token');
@@ -327,12 +365,24 @@ export default function ContentFactoryPage() {
       {/* Resultados de la Generación */}
       {generatedContent && (
         <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-[#24334A] pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#24334A] pb-3">
             <span className="text-xs font-bold text-sky-400 uppercase tracking-wider">
               Resultado Generado por IA
             </span>
-            <button
-              onClick={handleCopy}
+            <div className="flex items-center space-x-2">
+              {activeTab === 'highlights' && (
+                <button
+                  type="button"
+                  onClick={handleGenerateMultimedia}
+                  disabled={loadingMultimedia}
+                  className="text-xs font-bold py-1.5 px-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white transition cursor-pointer shadow-md shadow-purple-950/40 disabled:opacity-60 flex items-center space-x-1.5"
+                >
+                  <span>🎨</span>
+                  <span>{loadingMultimedia ? 'Diseñando Prompts...' : 'Generar Prompts Multimedia'}</span>
+                </button>
+              )}
+              <button
+                onClick={handleCopy}
               className={`text-xs font-bold py-1.5 px-3 rounded-lg transition cursor-pointer ${
                 copied
                   ? 'bg-emerald-600 text-white'
@@ -346,6 +396,34 @@ export default function ContentFactoryPage() {
           <div className="bg-[#0B121E] p-5 rounded-xl border border-[#24334A]/60 text-sm text-slate-200 leading-relaxed whitespace-pre-line font-mono">
             {generatedContent}
           </div>
+
+          {/* Panel de Prompts Multimedia */}
+          {multimediaPrompts && (
+            <div className="mt-6 bg-[#0E1726] border border-purple-500/30 rounded-xl p-5 shadow-2xl space-y-3">
+              <div className="flex items-center justify-between border-b border-purple-500/20 pb-3">
+                <div className="flex items-center space-x-2">
+                  <span className="text-base">🎬</span>
+                  <span className="text-xs font-bold text-purple-300 uppercase tracking-wider">
+                    Suite de Prompts de Producción (Veo 3.1 • Midjourney • Canva)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyMultimedia}
+                  className={`text-xs font-bold py-1.5 px-3 rounded-lg transition cursor-pointer ${
+                    copiedMultimedia
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-purple-900/50 hover:bg-purple-800/60 text-purple-200 border border-purple-500/40'
+                  }`}
+                >
+                  {copiedMultimedia ? '✓ Prompts Copiados' : 'Copiar Todos los Prompts'}
+                </button>
+              </div>
+              <div className="bg-[#080D1A] p-4 rounded-lg border border-purple-900/40 text-xs text-purple-100 font-mono leading-relaxed whitespace-pre-line max-h-96 overflow-y-auto">
+                {multimediaPrompts}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
