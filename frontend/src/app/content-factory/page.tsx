@@ -363,6 +363,7 @@ export default function ContentFactoryPage() {
       </div>
 
       {/* Resultados de la Generación */}
+      {/* Resultados de la Generación */}
       {generatedContent && (
         <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 shadow-xl space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#24334A] pb-3">
@@ -382,15 +383,17 @@ export default function ContentFactoryPage() {
                 </button>
               )}
               <button
+                type="button"
                 onClick={handleCopy}
-              className={`text-xs font-bold py-1.5 px-3 rounded-lg transition cursor-pointer ${
-                copied
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-[#1E293B] hover:bg-[#334155] text-slate-300 border border-[#334155]'
-              }`}
-            >
-              {copied ? '✓ Copiado al portapapeles' : 'Copiar Resultado'}
-            </button>
+                className={`text-xs font-bold py-1.5 px-3 rounded-lg transition cursor-pointer ${
+                  copied
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-[#1E293B] hover:bg-[#334155] text-slate-300 border border-[#334155]'
+                }`}
+              >
+                {copied ? '✓ Copiado al portapapeles' : 'Copiar Resultado'}
+              </button>
+            </div>
           </div>
 
           <div className="bg-[#0B121E] p-5 rounded-xl border border-[#24334A]/60 text-sm text-slate-200 leading-relaxed whitespace-pre-line font-mono">
