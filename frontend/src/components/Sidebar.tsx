@@ -23,8 +23,8 @@ export default function Sidebar() {
     {
       phase: 'FASE 2: CONVERSIÓN & MENSAJES',
       items: [
-        { name: '3. Fábrica de Guiones', path: '/content-factory', icon: '💬' },
-        { name: '4. Imán de Perfil', path: '/profile-magnet', icon: '🧲' },
+        { name: '3. Fábrica de Contenidos', path: '/content-factory', icon: '💬' },
+        { name: '4. Perfil Magnético', path: '/profile-magnet', icon: '🧲' },
         { name: '5. Pipeline & Mensajes', path: '/conversations', icon: '🚀' },
       ],
     },
