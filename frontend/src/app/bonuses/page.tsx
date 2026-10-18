@@ -20,6 +20,11 @@ export default function BonusesPage() {
   const router = useRouter();
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [activeModal, setActiveModal] = useState<BonusItem | null>(null);
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [ticketPrice, setTicketPrice] = useState<number>(500);
+  const [monthlyGoal, setMonthlyGoal] = useState<number>(3000);
+  const [dailyContacts, setDailyContacts] = useState<number>(25);
+
 
   useEffect(() => {
     const token = localStorage.getItem('jwt_token');
@@ -82,6 +87,7 @@ CATEGORÍA C: REACTIVACIÓN Y SEGUIMIENTO A LAS 48 HORAS
     },
     {
       id: 'calculadora-metricas',
+      isCalculator: true,
       badge: 'Bono 3 • Herramienta',
       title: 'Calculadora de Métricas del Setter',
       description: 'Framework numérico para determinar cuántos contactos, respuestas y diagnósticos necesitas para tu meta mensual.',
@@ -219,7 +225,15 @@ FASE 3: EL FEED DE CONVERSIÓN (LOS 3 POSTS FIJADOS)
             </div>
 
             <div className="pt-2">
-              {item.actionType === 'modal' ? (
+              {item.id === 'calculadora-metricas' ? (
+                <button
+                  onClick={() => setShowCalculator(true)}
+                  className="w-full bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition shadow-md shadow-sky-950/40 flex items-center justify-center space-x-2 cursor-pointer"
+                >
+                  <span>🧮</span>
+                  <span>Abrir Simulador Interactivo</span>
+                </button>
+              ) : item.actionType === 'modal' ? (
                 <button
                   onClick={() => setActiveModal(item)}
                   className="w-full bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition shadow-md shadow-sky-950/40 flex items-center justify-center space-x-2 cursor-pointer"
@@ -303,6 +317,113 @@ FASE 3: EL FEED DE CONVERSIÓN (LOS 3 POSTS FIJADOS)
           </div>
         </div>
       )}
+
+      {/* Modal Simulador Interactivo de Conversión & ROI (Bono 3) */}
+      {showCalculator && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#162032] border border-[#24334A] rounded-2xl w-full max-w-xl flex flex-col shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-[#24334A] bg-[#0B121E]">
+              <div>
+                <span className="text-[11px] font-bold text-sky-400 uppercase tracking-wider block">
+                  Bono 3 • Simulador de Conversión
+                </span>
+                <h3 className="text-base font-bold text-white tracking-tight">
+                  Calculadora de Retorno de Inversión (ROI) & Embudo del Setter
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowCalculator(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-[#1E293B] transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5 bg-[#0B121E]/60">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-[#162032] p-3 rounded-xl border border-[#24334A]">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Precio Ticket (USD)</label>
+                  <input
+                    type="number"
+                    value={ticketPrice}
+                    onChange={(e) => setTicketPrice(Math.max(1, Number(e.target.value)))}
+                    className="w-full bg-[#0B121E] border border-[#24334A] rounded-lg px-2.5 py-1.5 text-sm font-bold text-white outline-none focus:border-sky-500"
+                  />
+                </div>
+                <div className="bg-[#162032] p-3 rounded-xl border border-[#24334A]">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Meta Mensual (USD)</label>
+                  <input
+                    type="number"
+                    value={monthlyGoal}
+                    onChange={(e) => setMonthlyGoal(Math.max(1, Number(e.target.value)))}
+                    className="w-full bg-[#0B121E] border border-[#24334A] rounded-lg px-2.5 py-1.5 text-sm font-bold text-emerald-400 outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div className="bg-[#162032] p-3 rounded-xl border border-[#24334A]">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Toques / Día</label>
+                  <input
+                    type="number"
+                    value={dailyContacts}
+                    onChange={(e) => setDailyContacts(Math.max(1, Number(e.target.value)))}
+                    className="w-full bg-[#0B121E] border border-[#24334A] rounded-lg px-2.5 py-1.5 text-sm font-bold text-sky-400 outline-none focus:border-sky-500"
+                  />
+                </div>
+              </div>
+
+              {/* Cascada de Conversión */}
+              <div className="bg-[#162032] rounded-xl p-4 border border-[#24334A] space-y-3">
+                <span className="text-xs font-bold text-white uppercase tracking-wider block border-b border-[#24334A] pb-2">
+                  Proyección Mensual con Metodología SetterMind AI (22 días)
+                </span>
+                
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="bg-[#0B121E] p-2.5 rounded-lg border border-[#24334A]/40">
+                    <span className="text-slate-400 block text-[10px]">Contactos Mensuales:</span>
+                    <span className="text-white font-bold font-mono text-sm">{dailyContacts * 22}</span>
+                  </div>
+                  <div className="bg-[#0B121E] p-2.5 rounded-lg border border-[#24334A]/40">
+                    <span className="text-slate-400 block text-[10px]">Respuestas (Tasa 30%):</span>
+                    <span className="text-sky-400 font-bold font-mono text-sm">{Math.round(dailyContacts * 22 * 0.30)} conversaciones</span>
+                  </div>
+                  <div className="bg-[#0B121E] p-2.5 rounded-lg border border-[#24334A]/40">
+                    <span className="text-slate-400 block text-[10px]">Aceptación Lead Magnet (50%):</span>
+                    <span className="text-indigo-400 font-bold font-mono text-sm">{Math.round(dailyContacts * 22 * 0.30 * 0.50)} prospectos</span>
+                  </div>
+                  <div className="bg-[#0B121E] p-2.5 rounded-lg border border-[#24334A]/40">
+                    <span className="text-slate-400 block text-[10px]">Llamadas Agendadas (20%):</span>
+                    <span className="text-emerald-400 font-bold font-mono text-sm">{Math.round(dailyContacts * 22 * 0.30 * 0.50 * 0.20)} agendas</span>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-emerald-950/40 to-sky-950/40 border border-emerald-500/30 p-3.5 rounded-xl flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">Cierres Estimados (Tasa 20%)</span>
+                    <span className="text-lg font-bold text-white">
+                      {Math.max(1, Math.round(dailyContacts * 22 * 0.30 * 0.50 * 0.20 * 0.20))} ventas
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Ingreso Proyectado</span>
+                    <span className="text-lg font-mono font-bold text-emerald-400">
+                      ${Math.max(1, Math.round(dailyContacts * 22 * 0.30 * 0.50 * 0.20 * 0.20)) * ticketPrice} USD
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-[#24334A] bg-[#0B121E] flex justify-end">
+              <button
+                onClick={() => setShowCalculator(false)}
+                className="bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold py-2 px-5 rounded-xl transition cursor-pointer"
+              >
+                Cerrar Simulador
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
