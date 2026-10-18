@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface BonusItem {
+  isCalculator?: boolean;
   id: string;
   badge: string;
   title: string;
