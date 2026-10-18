@@ -34,6 +34,16 @@ export default function BonusesPage() {
     }
   }, [router]);
 
+    const handleDownload = (filename: string, text: string) => {
+    const element = document.createElement("a");
+    const file = new Blob([text], { type: "text/plain;charset=utf-8" });
+    element.href = URL.createObjectURL(file);
+    element.download = `${filename}.txt`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
+
   const handleCopy = (content: string, id: string) => {
     navigator.clipboard.writeText(content);
     setCopiedKey(id);
@@ -182,7 +192,7 @@ FASE 3: EL FEED DE CONVERSIÓN (LOS 3 POSTS FIJADOS)
       tag: 'Comunidad VIP',
       actionType: 'external',
       linkText: 'Unirme al Canal Privado →',
-      url: 'https://t.me/+settermind_vip',
+      url: 'https://t.me/+529931741381',
     },
   ];
 
