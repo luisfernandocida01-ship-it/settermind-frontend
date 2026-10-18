@@ -19,6 +19,10 @@ export default function LoginPage() {
     try {
       const data = await loginUser({ email, password });
       localStorage.setItem('jwt_token', data.token);
+      if (data.user) {
+        localStorage.setItem('user_info', JSON.stringify(data.user));
+        localStorage.setItem('plan_tier', data.user.plan_tier || 'basic');
+      }
       router.push('/');
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión. Verifica tus credenciales.');

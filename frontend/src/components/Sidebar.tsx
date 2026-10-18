@@ -4,7 +4,33 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './useAuth';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://settermind-flask-template.onrender.com';
+
 export default function Sidebar() {
+  const [planTier, setPlanTier] = useState<string>('cargando...');
+
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
+    if (!token) return;
+
+    fetch(`${API_BASE_URL}/api/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.plan_tier) {
+          const tierMap: Record<string, string> = {
+            'basic': 'Plan Básico',
+            'pro': 'Plan Pro',
+            'plus': 'Plan Plus'
+          };
+          setPlanTier(tierMap[data.plan_tier.toLowerCase()] || data.plan_tier.toUpperCase());
+        } else {
+          setPlanTier('Plan Básico');
+        }
+      })
+      .catch(() => setPlanTier('Plan Activo'));
+  }, []);
   const pathname = usePathname();
   const { logout } = useAuth();
 
@@ -105,7 +131,7 @@ export default function Sidebar() {
             <span>LICENCIA HOTMART</span>
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           </div>
-          <p className="text-[11px] text-gray-300 font-medium mt-0.5">Activa • Plan Ilimitado</p>
+          <p className="text-[11px] text-gray-300 font-medium mt-0.5">Activa • {planTier}</p>
         </div>
 
         <button
