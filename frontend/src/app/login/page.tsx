@@ -11,9 +11,37 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [isSendingReset, setIsSendingReset] = useState(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail.trim()) return;
+    setIsSendingReset(true);
+    setResetMessage(null);
+    setResetError(null);
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://settermind-flask-template.onrender.com';
+      const res = await fetch(`${backendUrl}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Error al solicitar el enlace.');
+      setResetMessage(data.message || 'Enlace enviado con éxito a tu correo.');
+    } catch (err: any) {
+      setResetError(err.message || 'No fue posible enviar el enlace.');
+    } finally {
+      setIsSendingReset(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,66 +166,79 @@ export default function LoginPage() {
           <div className="bg-[#111A28] border border-[#24334A] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative animate-in fade-in zoom-in duration-200">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-base font-bold text-white">Recuperar Acceso</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Recuperación de cuenta y clave de acceso</p>
+                <h3 className="text-base font-bold text-white">¿Olvidaste tu contraseña?</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Ingresa tu correo para recibir un enlace de restablecimiento directo</p>
               </div>
               <button
                 type="button"
-                onClick={() => setShowForgotModal(false)}
+                onClick={() => {
+                  setShowForgotModal(false);
+                  setResetMessage(null);
+                  setResetError(null);
+                }}
                 className="text-slate-400 hover:text-white p-1 rounded-lg transition"
               >
                 ✕
               </button>
             </div>
 
-            <div className="bg-[#0B121E] border border-[#1E2D42] rounded-xl p-4 space-y-3 text-xs text-slate-300 leading-relaxed">
-              <p>
-                Si olvidaste tu contraseña o necesitas reactivar tu ingreso, puedes acceder directamente con el <strong>enlace mágico</strong> que recibiste en tu correo de bienvenida tras tu compra en Hotmart.
-              </p>
-              <p>
-                Si no encuentras el correo o deseas restablecer tus credenciales manualmente, nuestro equipo de soporte te asistirá de inmediato:
-              </p>
-              
-              <div className="flex items-center justify-between bg-[#162032] border border-[#24334A] rounded-lg p-2.5 mt-2">
-                <span className="font-mono text-sky-400 text-[11px] select-all">
-                  servicioalcliente@mentesalmercado.online
-                </span>
+            {resetMessage ? (
+              <div className="bg-emerald-950/40 border border-emerald-800 rounded-xl p-4 text-xs text-emerald-300 space-y-2">
+                <p className="font-semibold">✓ Correo enviado</p>
+                <p className="leading-relaxed">{resetMessage}</p>
+                <p className="text-slate-400 text-[11px] pt-2">Revisa tu bandeja de entrada o la carpeta de spam.</p>
                 <button
                   type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText("servicioalcliente@mentesalmercado.online");
-                    setCopiedEmail(true);
-                    setTimeout(() => setCopiedEmail(false), 2000);
-                  }}
-                  className="bg-sky-600/30 hover:bg-sky-600/50 text-sky-300 text-[10px] px-2.5 py-1 rounded transition"
+                  onClick={() => setShowForgotModal(false)}
+                  className="w-full mt-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg text-xs transition"
                 >
-                  {copiedEmail ? "¡Copiado!" : "Copiar"}
+                  Entendido
                 </button>
               </div>
-            </div>
+            ) : (
+              <form onSubmit={handleForgotSubmit} className="space-y-4">
+                {resetError && (
+                  <div className="bg-rose-950/40 border border-rose-800 rounded-lg p-2.5 text-xs text-rose-300">
+                    {resetError}
+                  </div>
+                )}
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                    Correo Electrónico Registrado
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    placeholder="tu@email.com"
+                    className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 outline-none transition"
+                  />
+                </div>
 
-            <div className="flex flex-col sm:flex-row gap-2 pt-2">
-              <a
-                href="https://mail.google.com/mail/?view=cm&fs=1&to=servicioalcliente@mentesalmercado.online&su=Recuperaci%C3%B3n%20de%20Acceso%20SetterMind"
-                target="_blank"
-                rel="noreferrer"
-                className="flex-1 bg-sky-600 hover:bg-sky-500 text-white text-center font-bold py-2.5 px-3 rounded-xl text-xs transition shadow-md"
-              >
-                Abrir en Gmail Web →
-              </a>
-              <button
-                type="button"
-                onClick={() => setShowForgotModal(false)}
-                className="bg-[#162032] hover:bg-[#1E2D42] text-slate-300 font-medium py-2.5 px-4 rounded-xl text-xs transition"
-              >
-                Cerrar
-              </button>
-            </div>
+                <button
+                  type="submit"
+                  disabled={isSendingReset}
+                  className="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 px-4 rounded-xl text-xs transition shadow-lg shadow-sky-950/40 disabled:opacity-60 cursor-pointer"
+                >
+                  {isSendingReset ? 'Enviando enlace...' : 'Enviar enlace de restablecimiento →'}
+                </button>
+
+                <div className="pt-2 border-t border-[#1E2D42] text-center">
+                  <p className="text-[11px] text-slate-400">
+                    ¿Necesitas soporte personalizado?{' '}
+                    <a
+                      href="https://mail.google.com/mail/?view=cm&fs=1&to=servicioalcliente@mentesalmercado.online&su=Recuperaci%C3%B3n%20de%20Acceso%20SetterMind"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sky-400 hover:text-sky-300 underline"
+                    >
+                      Escríbenos a soporte
+                    </a>
+                  </p>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
-
-    </div>
-    </main>
-  );
-}
