@@ -46,7 +46,7 @@ function ResetPasswordForm() {
       if (!res.ok) throw new Error(data.detail || 'Error al actualizar la contraseña.');
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message || 'No fue posible restablecer la contraseña.');
+      setError(err.message || 'No fue posible conectar con el servidor. Intenta de nuevo.');
     } finally {
       setIsLoading(false);
     }
@@ -59,6 +59,12 @@ function ResetPasswordForm() {
         <p className="text-xs text-slate-400 mt-1">Crea una nueva contraseña segura para tu cuenta</p>
       </div>
 
+      {error && (
+        <div className="mb-4 bg-rose-950/40 border border-rose-800 text-rose-300 text-xs p-3 rounded-xl leading-relaxed">
+          {error}
+        </div>
+      )}
+
       {success ? (
         <div className="bg-emerald-950/40 border border-emerald-800 rounded-xl p-6 text-center space-y-4">
           <div className="w-12 h-12 bg-emerald-600/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
@@ -66,7 +72,7 @@ function ResetPasswordForm() {
           </div>
           <h3 className="text-sm font-bold text-white">¡Contraseña Actualizada!</h3>
           <p className="text-xs text-slate-300 leading-relaxed">
-            Tu contraseña ha sido restablecida exitosamente. Ahora puedes ingresar al Centro de Mando.
+            Tu contraseña ha sido restablecida exitosamente. Ahora puedes ingresar con tus nuevas credenciales.
           </p>
           <button
             type="button"
@@ -78,12 +84,6 @@ function ResetPasswordForm() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="bg-rose-950/40 border border-rose-800 text-rose-300 text-xs p-3 rounded-xl leading-relaxed">
-              {error}
-            </div>
-          )}
-
           <div>
             <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
               Nueva Contraseña
@@ -156,16 +156,12 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   return (
     <main className="min-h-screen bg-[#070B11] flex flex-col items-center justify-center p-4">
+      {/* Brand Header con Emblema Dorado */}
       <div className="mb-8 flex flex-col items-center">
-        <Image
-          src="/brand/settermind-logo.png"
-          alt="SetterMind Logo"
-          width={180}
-          height={60}
-          className="h-14 w-auto object-contain"
-          priority
-        />
-        <h1 className="text-xl font-black tracking-tight text-white mt-3">SetterMind AI</h1>
+        <div className="w-14 h-14 rounded-2xl bg-[#0E1A2C] border-2 border-[#D4AF37] flex items-center justify-center shadow-lg shadow-amber-950/20 mb-3">
+          <span className="text-2xl font-black text-[#F3C969] font-serif">M</span>
+        </div>
+        <h1 className="text-xl font-black tracking-tight text-white">SetterMind AI</h1>
         <p className="text-[11px] font-semibold tracking-widest text-slate-400 uppercase mt-0.5">
           Restablecimiento Seguro
         </p>
