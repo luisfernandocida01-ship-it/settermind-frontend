@@ -35,7 +35,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { logout } = useAuth();
 
-  if (pathname === '/login' || pathname === '/register') {
+  if (pathname === '/login' || pathname === '/register' || pathname === '/reset-password') {
     return null;
   }
 
