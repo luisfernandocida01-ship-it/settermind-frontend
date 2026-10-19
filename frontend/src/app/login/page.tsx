@@ -10,6 +10,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [copiedEmail, setCopiedEmail] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -128,7 +130,73 @@ export default function LoginPage() {
             </p>
           </div>
         </div>
-      </div>
+      
+      {/* Modal de Recuperación de Contraseña */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-[#111A28] border border-[#24334A] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-base font-bold text-white">Recuperar Acceso</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Recuperación de cuenta y clave de acceso</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="bg-[#0B121E] border border-[#1E2D42] rounded-xl p-4 space-y-3 text-xs text-slate-300 leading-relaxed">
+              <p>
+                Si olvidaste tu contraseña o necesitas reactivar tu ingreso, puedes acceder directamente con el <strong>enlace mágico</strong> que recibiste en tu correo de bienvenida tras tu compra en Hotmart.
+              </p>
+              <p>
+                Si no encuentras el correo o deseas restablecer tus credenciales manualmente, nuestro equipo de soporte te asistirá de inmediato:
+              </p>
+              
+              <div className="flex items-center justify-between bg-[#162032] border border-[#24334A] rounded-lg p-2.5 mt-2">
+                <span className="font-mono text-sky-400 text-[11px] select-all">
+                  servicioalcliente@mentesalmercado.online
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText("servicioalcliente@mentesalmercado.online");
+                    setCopiedEmail(true);
+                    setTimeout(() => setCopiedEmail(false), 2000);
+                  }}
+                  className="bg-sky-600/30 hover:bg-sky-600/50 text-sky-300 text-[10px] px-2.5 py-1 rounded transition"
+                >
+                  {copiedEmail ? "¡Copiado!" : "Copiar"}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <a
+                href="https://mail.google.com/mail/?view=cm&fs=1&to=servicioalcliente@mentesalmercado.online&su=Recuperaci%C3%B3n%20de%20Acceso%20SetterMind"
+                target="_blank"
+                rel="noreferrer"
+                className="flex-1 bg-sky-600 hover:bg-sky-500 text-white text-center font-bold py-2.5 px-3 rounded-xl text-xs transition shadow-md"
+              >
+                Abrir en Gmail Web →
+              </a>
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(false)}
+                className="bg-[#162032] hover:bg-[#1E2D42] text-slate-300 font-medium py-2.5 px-4 rounded-xl text-xs transition"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
     </main>
   );
 }
