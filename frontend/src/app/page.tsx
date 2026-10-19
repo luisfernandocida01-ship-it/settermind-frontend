@@ -38,6 +38,74 @@ export default function Dashboard() {
     totalSavedPosts: 0,
     totalOutboxLeads: 0,
   });
+    const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importedPosts, setImportedPosts] = useState<any[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('settermind_imported_csv_posts');
+        return stored ? JSON.parse(stored) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) return;
+
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      const newItems: any[] = [];
+
+      lines.forEach((line, idx) => {
+        // Ignorar encabezados si contienen palabras comunes
+        if (idx === 0 && (line.toLowerCase().includes("url") || line.toLowerCase().includes("enlace"))) return;
+        
+        const cols = line.split(/[,;\t]/).map(c => c.replace(/^["']|["']$/g, '').trim());
+        const urlCandidate = cols.find(c => c.includes("instagram.com/p/") || c.includes("instagram.com/reel/"));
+        
+        if (urlCandidate) {
+          newItems.push({
+            url: urlCandidate,
+            ownerUsername: cols[1] || 'importado',
+            likesCount: parseInt(cols[2] || '0') || 0,
+            commentsCount: parseInt(cols[3] || '0') || 0,
+            caption: cols[4] || 'Publicación importada desde archivo CSV para análisis directo.'
+          });
+        } else if (cols[0].startsWith("http")) {
+          newItems.push({
+            url: cols[0],
+            ownerUsername: cols[1] || 'importado',
+            likesCount: parseInt(cols[2] || '0') || 0,
+            commentsCount: parseInt(cols[3] || '0') || 0,
+            caption: cols[4] || 'Publicación importada desde archivo CSV para análisis directo.'
+          });
+        }
+      });
+
+      if (newItems.length > 0) {
+        setImportedPosts((prev) => {
+          const combined = [...newItems, ...prev];
+          localStorage.setItem('settermind_imported_csv_posts', JSON.stringify(combined));
+          return combined;
+        });
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleClearImported = () => {
+    setImportedPosts([]);
+    localStorage.removeItem('settermind_imported_csv_posts');
+  };
+
   const [recentSavedPosts, setRecentSavedPosts] = useState<any[]>([]);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
 
@@ -460,6 +528,72 @@ export default function Dashboard() {
               )}
             </div>
           </div>
+
+              {/* Tarjeta de Publicaciones Importadas por CSV */}
+              <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-[#24334A]">
+                  <div>
+                    <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                      <span>Publicaciones Importadas para Análisis</span>
+                      <span className="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded-full font-mono">
+                        {importedPosts.length}
+                      </span>
+                    </h2>
+                    <p className="text-xs text-slate-400">Publicaciones cargadas vía archivo CSV listas para extracción de leads.</p>
+                  </div>
+                  {importedPosts.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearImported}
+                      className="text-xs text-slate-400 hover:text-rose-400 transition"
+                    >
+                      Limpiar lista
+                    </button>
+                  )}
+                </div>
+
+                {importedPosts.length > 0 ? (
+                  <div className="space-y-3">
+                    {importedPosts.map((p, i) => (
+                      <div key={i} className="bg-[#0B121E] border border-[#24334A] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-emerald-600/40 transition">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className="text-xs font-bold text-emerald-400">@{p.ownerUsername || 'cuenta'}</span>
+                            <span className="text-[10px] text-slate-500">•</span>
+                            <span className="text-[10px] text-slate-400">❤️ {p.likesCount ?? 0}</span>
+                            <span className="text-[10px] text-slate-400">💬 {p.commentsCount ?? 0}</span>
+                          </div>
+                          <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
+                            {p.caption || 'Publicación importada para análisis.'}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPostUrl(p.url);
+                            window.scrollTo({ top: 300, behavior: 'smooth' });
+                          }}
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-lg text-xs transition cursor-pointer shrink-0"
+                        >
+                          ⚡ Analizar Publicación
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center bg-[#0B121E] border border-dashed border-[#24334A] rounded-xl space-y-2">
+                    <p className="text-xs text-slate-400">Aún no has importado publicaciones desde CSV.</p>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 underline"
+                    >
+                      Seleccionar archivo .CSV para cargar
+                    </button>
+                  </div>
+                )}
+              </div>
+
         </div>
       )}
 
