@@ -46,8 +46,10 @@ export default function ContentFactoryPage() {
           script_content: generatedContent || ''
         })
       });
-      if (!res.ok) throw new Error('Error al generar prompts multimedia.');
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Esta función es exclusiva para suscriptores del Plan Pro y Plus. Actualiza tu plan para desbloquearla.');
+      }
       setMultimediaPrompts(typeof data === 'string' ? data : data.result || JSON.stringify(data, null, 2));
     } catch (err: any) {
       alert(err.message || 'Error al conectar con el servidor.');
