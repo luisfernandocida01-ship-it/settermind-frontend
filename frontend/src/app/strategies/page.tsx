@@ -174,8 +174,8 @@ export default function StrategiesPage() {
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center space-x-3 mb-1">
-                              <span className="text-xs font-bold text-sky-400">@{post.ownerUsername || 'autor'}</span>
-                              <span className="text-[11px] text-slate-400">❤️ {post.likesCount ?? 0} | 💬 {post.commentsCount ?? 0}</span>
+                              <span className="text-xs font-bold text-sky-400">{(post.author || post.ownerUsername || 'autor').replace(/^@+/, '@')}</span>
+                              <span className="text-[11px] text-slate-400">❤️ {post.likes_count ?? post.likesCount ?? 0} | 💬 {post.comments_count ?? post.commentsCount ?? 0}</span>
                             </div>
                             <p className="text-xs text-slate-300 line-clamp-2 italic">"{post.caption || 'Sin descripción disponible.'}"</p>
                           </div>
