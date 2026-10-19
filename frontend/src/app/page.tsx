@@ -646,13 +646,12 @@ export default function Dashboard() {
                 ) : (
                   <div className="py-8 text-center bg-[#0B121E] border border-dashed border-[#24334A] rounded-xl space-y-2">
                     <p className="text-xs text-slate-400">Aún no has importado publicaciones desde CSV.</p>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 underline"
+                    <label
+                      htmlFor="csv-file-input"
+                      className="inline-block text-xs font-semibold text-emerald-400 hover:text-emerald-300 underline cursor-pointer py-1 px-3 rounded hover:bg-emerald-950/30 transition"
                     >
                       Seleccionar archivo .CSV para cargar
-                    </button>
+                    </label>
                   </div>
                 )}
               </div>
