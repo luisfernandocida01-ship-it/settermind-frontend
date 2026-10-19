@@ -103,12 +103,13 @@ export default function LoginPage() {
                 </button>
               </div>
               <div className="flex justify-end mt-1.5">
-                <a
-                  href="mailto:servicioalcliente@mentesalmercado.online?subject=Recuperaci%C3%B3n%20de%20Contrase%C3%B1a%20SetterMind"
-                  className="text-[11px] text-sky-400 hover:text-sky-300 transition"
-                >
-                  ¿Olvidaste tu contraseña?
-                </a>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(true)}
+                    className="text-[11px] text-sky-400 hover:text-sky-300 transition cursor-pointer"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
               </div>
             </div>
 
