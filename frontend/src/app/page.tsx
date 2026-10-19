@@ -60,38 +60,101 @@ export default function Dashboard() {
       const text = event.target?.result as string;
       if (!text) return;
 
-      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-      const newItems: any[] = [];
+      // Dividir lineas respetando saltos
+      const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      if (rawLines.length === 0) return;
 
-      lines.forEach((line, idx) => {
-        // Ignorar encabezados si contienen palabras comunes
-        if (idx === 0 && (line.toLowerCase().includes("url") || line.toLowerCase().includes("enlace"))) return;
-        
-        const cols = line.split(/[,;\t]/).map(c => c.replace(/^["']|["']$/g, '').trim());
-        const urlCandidate = cols.find(c => c.includes("instagram.com/p/") || c.includes("instagram.com/reel/"));
-        
-        if (urlCandidate) {
-          newItems.push({
-            url: urlCandidate,
-            ownerUsername: cols[1] || 'importado',
-            likesCount: parseInt(cols[2] || '0') || 0,
-            commentsCount: parseInt(cols[3] || '0') || 0,
-            caption: cols[4] || 'Publicación importada desde archivo CSV para análisis directo.'
-          });
-        } else if (cols[0].startsWith("http")) {
-          newItems.push({
-            url: cols[0],
-            ownerUsername: cols[1] || 'importado',
-            likesCount: parseInt(cols[2] || '0') || 0,
-            commentsCount: parseInt(cols[3] || '0') || 0,
-            caption: cols[4] || 'Publicación importada desde archivo CSV para análisis directo.'
-          });
+      // Detectar separador común (, ; 	)
+      const firstLine = rawLines[0];
+      const delimiter = firstLine.includes(";") ? ";" : firstLine.includes("\t") ? "\t" : ",";
+
+      // Helper para limpiar comillas
+      const cleanCell = (str: string) => str.replace(/^["']|["']$/g, '').trim();
+
+      // Mapeo inteligente de encabezados
+      const headerTokens = firstLine.split(delimiter).map(c => cleanCell(c).toLowerCase());
+      
+      const isHeaderRow = headerTokens.some(h => 
+        h.includes("url") || h.includes("link") || h.includes("post") || 
+        h.includes("user") || h.includes("caption") || h.includes("enlace")
+      );
+
+      let urlIdx = -1;
+      let userIdx = -1;
+      let likesIdx = -1;
+      let commentsIdx = -1;
+      let captionIdx = -1;
+
+      if (isHeaderRow) {
+        headerTokens.forEach((h, idx) => {
+          if (urlIdx === -1 && (h.includes("url") || h.includes("link") || h.includes("enlace") || h.includes("publicacion"))) urlIdx = idx;
+          if (userIdx === -1 && (h.includes("user") || h.includes("owner") || h.includes("author") || h.includes("cuenta") || h.includes("autor"))) userIdx = idx;
+          if (likesIdx === -1 && (h.includes("like") || h.includes("me_gusta") || h.includes("gustas"))) likesIdx = idx;
+          if (commentsIdx === -1 && (h.includes("comment") || h.includes("comentario"))) commentsIdx = idx;
+          if (captionIdx === -1 && (h.includes("caption") || h.includes("text") || h.includes("desc") || h.includes("copy"))) captionIdx = idx;
+        });
+      }
+
+      // Normalizador de URL de Instagram para deduplicar
+      const cleanIgUrl = (raw: string): string | null => {
+        const match = raw.match(/https?:\/\/(www\.)?instagram\.com\/(p|reel|tv)\/([a-zA-Z0-9_-]+)/);
+        if (match) {
+          return `https://www.instagram.com/${match[2]}/${match[3]}/`;
         }
+        return raw.startsWith("http") ? raw.split("?")[0] : null;
+      };
+
+      const seenUrls = new Set<string>();
+      // Registrar URLs ya existentes en el estado para no duplicarlas
+      importedPosts.forEach(p => {
+        const clean = cleanIgUrl(p.url);
+        if (clean) seenUrls.add(clean);
       });
 
-      if (newItems.length > 0) {
+      const parsedItems: any[] = [];
+      const startIndex = isHeaderRow ? 1 : 0;
+
+      for (let i = startIndex; i < rawLines.length; i++) {
+        const row = rawLines[i].split(delimiter).map(cleanCell);
+        let postUrl = "";
+        let username = "cuenta";
+        let likes = 0;
+        let comments = 0;
+        let caption = "Publicación importada para análisis.";
+
+        if (urlIdx !== -1 && row[urlIdx]) {
+          postUrl = row[urlIdx];
+        } else {
+          // Búsqueda heurística de URL en cualquier columna
+          const found = row.find(c => c.includes("instagram.com/"));
+          if (found) postUrl = found;
+          else if (row[0] && row[0].startsWith("http")) postUrl = row[0];
+        }
+
+        const normalizedUrl = cleanIgUrl(postUrl);
+        if (!normalizedUrl || seenUrls.has(normalizedUrl)) {
+          continue; // Descartar si no es enlace válido o ya existe (deduplicación)
+        }
+
+        seenUrls.add(normalizedUrl);
+
+        if (userIdx !== -1 && row[userIdx]) username = row[userIdx].replace(/^@/, '');
+        if (likesIdx !== -1 && row[likesIdx]) likes = parseInt(row[likesIdx].replace(/[^0-9]/g, '')) || 0;
+        if (commentsIdx !== -1 && row[commentsIdx]) comments = parseInt(row[commentsIdx].replace(/[^0-9]/g, '')) || 0;
+        if (captionIdx !== -1 && row[captionIdx]) caption = row[captionIdx];
+
+        parsedItems.push({
+          url: normalizedUrl,
+          ownerUsername: username,
+          likesCount: likes,
+          commentsCount: comments,
+          caption: caption.length > 200 ? caption.slice(0, 197) + "..." : caption
+        });
+      }
+
+      if (parsedItems.length > 0) {
         setImportedPosts((prev) => {
-          const combined = [...newItems, ...prev];
+          const combined = [...parsedItems, ...prev];
           localStorage.setItem('settermind_imported_csv_posts', JSON.stringify(combined));
           return combined;
         });
