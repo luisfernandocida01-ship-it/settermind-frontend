@@ -23,8 +23,7 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://settermind-flask-template.onrender.com';
-      const res = await fetch(`${backendUrl}/api/auth/login`, {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password })
