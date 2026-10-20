@@ -13,7 +13,7 @@ export default function Dashboard() {
 
   const [postUrl, setPostUrl] = useState('');
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-  const [isAnalyzingLeads, setIsAnalyzingLeads] = useState(false);
+  const [isLoadingDetailsLeads, setIsAnalyzingLeads] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [step, setStep] = useState(1);
@@ -467,11 +467,11 @@ export default function Dashboard() {
                 />
                 <button
                   type="button"
-                  onClick={handleScrape}
-                  disabled={isAnalyzing || !postUrl.trim()}
+                  onClick={handleUrlSubmit}
+                  disabled={isLoadingDetails || !postUrl.trim()}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl text-xs uppercase tracking-wider transition shadow-lg shadow-emerald-950/40 disabled:opacity-50 cursor-pointer flex items-center justify-center space-x-2 shrink-0"
                 >
-                  <span>{isAnalyzing ? 'Extrayendo...' : '⚡ Analizar Publicación →'}</span>
+                  <span>{isLoadingDetails ? 'Extrayendo...' : '⚡ Analizar Publicación →'}</span>
                 </button>
               </div>
             </div>
@@ -601,10 +601,10 @@ export default function Dashboard() {
 
             <button
               onClick={handleAnalyzeLeads}
-              disabled={isAnalyzingLeads || !niche.trim() || !avatar.trim()}
+              disabled={isLoadingDetailsLeads || !niche.trim() || !avatar.trim()}
               className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl text-xs transition shadow-lg shadow-emerald-950/40 flex items-center justify-center space-x-2 disabled:opacity-60 cursor-pointer"
             >
-              <span>{isAnalyzingLeads ? 'Analizando comentarios con IA...' : 'Analizar Comentarios y Extraer Leads →'}</span>
+              <span>{isLoadingDetailsLeads ? 'Analizando comentarios con IA...' : 'Analizar Comentarios y Extraer Leads →'}</span>
             </button>
           </div>
         </div>
