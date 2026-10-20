@@ -452,7 +452,7 @@ export default function Dashboard() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => router.push('/estrategia')}
+                  onClick={() => router.push('/strategies')}
                   className="bg-[#1C283F] hover:bg-[#253554] text-amber-300 border border-amber-500/30 font-semibold px-4 py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center space-x-1.5"
                 >
                   <span>Mis Estrategias</span>
@@ -479,28 +479,28 @@ export default function Dashboard() {
               </div>
               <div className="bg-[#111A28] border border-[#24334A] p-5 rounded-2xl shadow-lg">
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tasa de Acción</div>
-                <div className="text-3xl font-extrabold text-purple-400">0%</div>
+                <div className="text-3xl font-extrabold text-purple-400">100%</div>
                 <div className="text-[11px] text-purple-400/80 mt-1">Rastreo activo</div>
               </div>
             </div>
 
-            {/* Cuadrícula de 2 Columnas (lg:grid-cols-12) */}
+            {/* Cuadrícula de 2 Columnas Superior (lg:grid-cols-12) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Columna Izquierda: Herramienta Directa */}
+              {/* Columna Izquierda: Analizar Publicacion Especifica */}
               <div className="lg:col-span-5 bg-[#111A28] border border-[#24334A] rounded-2xl p-6 shadow-xl space-y-4">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-sky-400 bg-sky-950/40 border border-sky-800/40 px-2 py-0.5 rounded">
+                  <span className="inline-block bg-sky-500/10 text-sky-400 text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-sky-500/20 mb-2">
                     Herramienta Directa
                   </span>
-                  <h2 className="text-lg font-bold text-white tracking-tight mt-2">Analizar Publicación Específica</h2>
+                  <h2 className="text-lg font-bold text-white tracking-tight">Analizar Publicación Específica</h2>
                   <p className="text-xs text-slate-400 mt-1 leading-relaxed">
                     Pega cualquier enlace público de Instagram para extraer sus comentarios y calificar leads.
                   </p>
                 </div>
 
-                <form onSubmit={handleUrlSubmit} className="space-y-4">
+                <form onSubmit={handleUrlSubmit} className="space-y-4 pt-2">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                    <label className="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
                       URL de Instagram
                     </label>
                     <input
@@ -508,112 +508,185 @@ export default function Dashboard() {
                       required
                       value={postUrl}
                       onChange={(e) => setPostUrl(e.target.value)}
-                      placeholder="https://www.instagram.com/p/... o /reel/..."
-                      className="w-full bg-[#0B121E] border border-[#24334A] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 outline-none transition"
+                      placeholder="https://www.instagram.com/p/..."
+                      className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 outline-none transition"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={isLoadingDetails || !postUrl.trim()}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-4 rounded-xl text-xs uppercase tracking-wider transition shadow-lg shadow-emerald-950/40 disabled:opacity-50 cursor-pointer flex items-center justify-center space-x-2"
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-5 rounded-xl text-xs transition shadow-lg shadow-emerald-950/40 flex items-center justify-center space-x-2 disabled:opacity-60 cursor-pointer"
                   >
-                    <span>{isLoadingDetails ? 'Extrayendo...' : '⚡ Analizar Publicación →'}</span>
+                    <span>{isLoadingDetails ? 'Extrayendo comentarios...' : '⚡ Analizar Publicación →'}</span>
                   </button>
                 </form>
               </div>
 
-              {/* Columna Derecha: Publicaciones Listas para Análisis */}
+              {/* Columna Derecha: Publicaciones Listas para Analisis (del Radar) */}
               <div className="lg:col-span-7 bg-[#111A28] border border-[#24334A] rounded-2xl p-6 shadow-xl space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-[#24334A]">
+                <div className="flex items-center justify-between pb-2 border-b border-[#24334A]">
                   <div>
-                    <h2 className="text-base font-bold text-white tracking-tight">Publicaciones Listas para Análisis</h2>
-                    <p className="text-xs text-slate-400 mt-0.5">Posts guardados desde tus búsquedas en el Radar o CSV.</p>
+                    <h2 className="text-lg font-bold text-white tracking-tight">Publicaciones Listas para Análisis</h2>
+                    <p className="text-xs text-slate-400">Posts guardados desde tus búsquedas en el Radar.</p>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="file"
-                      id="csv-file-direct-input"
-                      onChange={handleCsvUpload}
-                      accept=".csv"
-                      style={{ display: 'none' }}
-                    />
-                    <label
-                      htmlFor="csv-file-direct-input"
-                      className="bg-[#1C283F] hover:bg-[#253554] text-emerald-400 hover:text-emerald-300 border border-emerald-800/40 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center space-x-1"
-                    >
-                      <span>📁 Importar CSV</span>
-                    </label>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/strategies')}
+                    className="text-xs font-semibold text-sky-400 hover:text-sky-300 transition"
+                  >
+                    Ver todas →
+                  </button>
                 </div>
 
-                {importedPosts.length > 0 ? (
-                  <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
-                    {importedPosts.map((p, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-[#0B121E] border border-[#1E2D42] rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:border-emerald-900/40 transition"
-                      >
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <div className="flex items-center space-x-2 text-xs">
-                            <span className="font-bold text-sky-400">@{p.ownerUsername}</span>
-                            {p.likesCount > 0 && (
-                              <>
-                                <span className="text-slate-500">•</span>
-                                <span className="text-slate-400 text-[11px]">❤️ {p.likesCount}</span>
-                              </>
-                            )}
-                            {p.commentsCount > 0 && (
-                              <span className="text-slate-400 text-[11px]">💬 {p.commentsCount}</span>
-                            )}
+                {isLoadingDashboard ? (
+                  <div className="py-12 text-center text-xs text-slate-400">Cargando oportunidades del radar...</div>
+                ) : recentSavedPosts.length > 0 ? (
+                  <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+                    {recentSavedPosts.map((p, i) => (
+                      <div key={i} className="bg-[#0B121E] border border-[#24334A] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-600 transition">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className="text-xs font-bold text-sky-400">@{p.ownerUsername || 'cuenta'}</span>
+                            <span className="text-[10px] text-slate-500">•</span>
+                            <span className="text-[10px] text-slate-400">❤️ {p.likesCount ?? 0}</span>
+                            <span className="text-[10px] text-slate-400">💬 {p.commentsCount ?? 0}</span>
                           </div>
-                          <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">{p.caption}</p>
+                          <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
+                            {p.caption || 'Publicación guardada para extracción de leads.'}
+                          </p>
                         </div>
-
-                        {p.url.includes('/p/') || p.url.includes('/reel/') || p.url.includes('/tv/') ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPostUrl(p.url);
-                              window.scrollTo({ top: 200, behavior: 'smooth' });
-                            }}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition cursor-pointer shrink-0 flex items-center space-x-1"
-                          >
-                            <span>⚡ Analizar</span>
-                          </button>
-                        ) : (
-                          <div className="flex items-center space-x-2 shrink-0">
-                            <span className="text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded">
-                              Perfil
-                            </span>
-                            <a
-                              href={p.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="bg-[#1C283F] hover:bg-[#253554] text-sky-400 hover:text-sky-300 font-semibold py-1 px-2.5 rounded-lg text-xs transition border border-sky-800/40"
-                            >
-                              Ver IG ↗
-                            </a>
-                          </div>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPostUrl(p.url);
+                            if (p.strategyNiche) setNiche(p.strategyNiche);
+                            if (p.strategyAvatar) setAvatar(p.strategyAvatar);
+                            const fakeEvent = { preventDefault: () => {} } as any;
+                            handleUrlSubmit(fakeEvent);
+                          }}
+                          className="shrink-0 bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold py-2 px-3 rounded-lg transition cursor-pointer"
+                        >
+                          ⚡ Analizar Ahora
+                        </button>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="py-12 text-center space-y-3">
+                  <div className="py-8 text-center space-y-3">
                     <p className="text-xs text-slate-400">Aún no tienes publicaciones guardadas en tus estrategias.</p>
-                    <div className="flex items-center justify-center space-x-3">
-                      <button
-                        type="button"
-                        onClick={() => router.push('/radar')}
-                        className="bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 px-4 rounded-xl text-xs transition cursor-pointer"
-                      >
-                        Ir al Radar y Guardar Posts →
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => router.push('/radar')}
+                      className="inline-block bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold py-2 px-4 rounded-xl transition"
+                    >
+                      Ir al Radar y Guardar Posts →
+                    </button>
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Recuadro Inferior: Publicaciones Importadas para Analisis (CSV) */}
+            <div className="bg-[#111A28] border border-[#24334A] rounded-2xl p-6 shadow-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <h3 className="text-base font-bold text-white tracking-wide">
+                    Publicaciones Importadas para Análisis
+                  </h3>
+                  <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                    {importedPosts.length}
+                  </span>
+                </div>
+                {importedPosts.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearImported}
+                    className="text-[11px] text-slate-400 hover:text-rose-400 transition cursor-pointer"
+                  >
+                    Limpiar lista
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 -mt-2">
+                Publicaciones cargadas vía archivo CSV listas para extracción de leads.
+              </p>
+
+              <input
+                type="file"
+                id="csv-file-direct-input"
+                onChange={handleCsvUpload}
+                accept=".csv"
+                style={{ display: 'none' }}
+              />
+
+              {importedPosts.length > 0 ? (
+                <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                  {importedPosts.map((p, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-[#0B121E] border border-[#1E2D42] rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:border-emerald-900/40 transition"
+                    >
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center space-x-2 text-xs">
+                          <span className="font-bold text-sky-400">@{p.ownerUsername}</span>
+                          {p.likesCount > 0 && (
+                            <>
+                              <span className="text-slate-500">•</span>
+                              <span className="text-slate-400 text-[11px]">❤️ {p.likesCount}</span>
+                            </>
+                          )}
+                          {p.commentsCount > 0 && (
+                            <span className="text-slate-400 text-[11px]">💬 {p.commentsCount}</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">{p.caption}</p>
+                      </div>
+
+                      {p.url.includes('/p/') || p.url.includes('/reel/') || p.url.includes('/tv/') ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPostUrl(p.url);
+                            window.scrollTo({ top: 380, behavior: 'smooth' });
+                          }}
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3.5 rounded-lg text-xs transition cursor-pointer shrink-0 flex items-center space-x-1.5 shadow-sm"
+                        >
+                          <span>⚡</span>
+                          <span>Analizar Post</span>
+                        </button>
+                      ) : (
+                        <div className="flex items-center space-x-2 shrink-0">
+                          <span className="text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-2 py-1 rounded-md">
+                            Perfil
+                          </span>
+                          <a
+                            href={p.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="bg-[#1C283F] hover:bg-[#253554] text-sky-400 hover:text-sky-300 font-semibold py-1.5 px-3 rounded-lg text-xs transition border border-sky-800/40 flex items-center space-x-1"
+                          >
+                            <span>Ver en IG ↗</span>
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-8 text-center bg-[#0B121E] border border-dashed border-[#24334A] rounded-xl space-y-3">
+                  <p className="text-xs text-slate-400">Aún no has importado publicaciones desde CSV.</p>
+                  <div>
+                    <label
+                      htmlFor="csv-file-direct-input"
+                      className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 underline cursor-pointer py-1.5 px-4 rounded-lg bg-emerald-950/30 hover:bg-emerald-950/60 border border-emerald-800/40 transition inline-flex items-center space-x-2 select-none"
+                    >
+                      <span>📁</span>
+                      <span>Seleccionar archivo .CSV para cargar</span>
+                    </label>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
