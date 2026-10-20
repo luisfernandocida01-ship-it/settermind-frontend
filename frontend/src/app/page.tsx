@@ -60,107 +60,97 @@ export default function Dashboard() {
       const text = event.target?.result as string;
       if (!text) return;
 
-      // Dividir lineas respetando saltos
       const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
       if (rawLines.length === 0) return;
 
-      // Detectar separador común (, ; 	)
       const firstLine = rawLines[0];
       const delimiter = firstLine.includes(";") ? ";" : firstLine.includes("\t") ? "\t" : ",";
 
-      // Helper para limpiar comillas
-      const cleanCell = (str: string) => str.replace(/^["']|["']$/g, '').trim();
-
-      // Mapeo inteligente de encabezados
-      const headerTokens = firstLine.split(delimiter).map(c => cleanCell(c).toLowerCase());
-      
-      const isHeaderRow = headerTokens.some(h => 
-        h.includes("url") || h.includes("link") || h.includes("post") || 
-        h.includes("user") || h.includes("caption") || h.includes("enlace")
-      );
-
-      let urlIdx = -1;
-      let userIdx = -1;
-      let likesIdx = -1;
-      let commentsIdx = -1;
-      let captionIdx = -1;
-
-      if (isHeaderRow) {
-        headerTokens.forEach((h, idx) => {
-          if (urlIdx === -1 && (h.includes("url") || h.includes("link") || h.includes("enlace") || h.includes("publicacion"))) urlIdx = idx;
-          if (userIdx === -1 && (h.includes("user") || h.includes("owner") || h.includes("author") || h.includes("cuenta") || h.includes("autor"))) userIdx = idx;
-          if (likesIdx === -1 && (h.includes("like") || h.includes("me_gusta") || h.includes("gustas"))) likesIdx = idx;
-          if (commentsIdx === -1 && (h.includes("comment") || h.includes("comentario"))) commentsIdx = idx;
-          if (captionIdx === -1 && (h.includes("caption") || h.includes("text") || h.includes("desc") || h.includes("copy"))) captionIdx = idx;
-        });
-      }
-
-      // Normalizador de URL de Instagram para deduplicar
-      const cleanIgUrl = (raw: string): string | null => {
-        const match = raw.match(/https?:\/\/(www\.)?instagram\.com\/(p|reel|tv)\/([a-zA-Z0-9_-]+)/);
-        if (match) {
-          return `https://www.instagram.com/${match[2]}/${match[3]}/`;
+      // Parser CSV que respeta comillas dobles
+      const parseCsvLine = (line: string): string[] => {
+        const result: string[] = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"' || char === "'") {
+            inQuotes = !inQuotes;
+          } else if (char === delimiter && !inQuotes) {
+            result.push(cur.trim().replace(/^["']|["']$/g, ''));
+            cur = '';
+          } else {
+            cur += char;
+          }
         }
-        return raw.startsWith("http") ? raw.split("?")[0] : null;
+        result.push(cur.trim().replace(/^["']|["']$/g, ''));
+        return result;
       };
 
-      const seenUrls = new Set<string>();
-      // Registrar URLs ya existentes en el estado para no duplicarlas
-      importedPosts.forEach(p => {
-        const clean = cleanIgUrl(p.url);
-        if (clean) seenUrls.add(clean);
-      });
+      const headers = parseCsvLine(firstLine).map(h => h.toLowerCase());
+      
+      let urlIdx = headers.findIndex(h => h.includes("profile_url") || h.includes("url") || h.includes("link") || h.includes("enlace"));
+      let userIdx = headers.findIndex(h => h === "username" || h === "user" || h === "cuenta");
+      let bioIdx = headers.findIndex(h => h.includes("bio") || h.includes("caption") || h.includes("desc") || h.includes("texto"));
+      let likesIdx = headers.findIndex(h => h.includes("like") || h.includes("me_gusta"));
+      let commentsIdx = headers.findIndex(h => h.includes("comment") || h.includes("comentario"));
 
-      const parsedItems: any[] = [];
-      const startIndex = isHeaderRow ? 1 : 0;
+      const seenUrls = new Set<string>();
+      importedPosts.forEach(p => seenUrls.add(p.url));
+
+      const parsed: any[] = [];
+      const startIndex = headers.length > 0 && (urlIdx !== -1 || userIdx !== -1) ? 1 : 0;
 
       for (let i = startIndex; i < rawLines.length; i++) {
-        const row = rawLines[i].split(delimiter).map(cleanCell);
-        let postUrl = "";
-        let username = "cuenta";
-        let likes = 0;
-        let comments = 0;
-        let caption = "Publicación importada para análisis.";
+        const cols = parseCsvLine(rawLines[i]);
+        if (cols.length === 0 || !cols.some(c => c.length > 0)) continue;
 
-        if (urlIdx !== -1 && row[urlIdx]) {
-          postUrl = row[urlIdx];
+        let rawUrl = urlIdx !== -1 && cols[urlIdx] ? cols[urlIdx] : cols.find(c => c.includes("instagram.com/")) || cols[0];
+        if (!rawUrl || !rawUrl.includes("instagram.com")) continue;
+
+        // Limpiar URL
+        const cleanUrl = rawUrl.split("?")[0].replace(/\/$/, "");
+        if (seenUrls.has(cleanUrl)) continue;
+        seenUrls.add(cleanUrl);
+
+        // Extraer @handle real
+        let rawUser = userIdx !== -1 ? cols[userIdx] : "";
+        let cleanHandle = "";
+
+        const handleInParens = rawUser.match(/\(@([a-zA-Z0-9._]+)/);
+        if (handleInParens) {
+          cleanHandle = handleInParens[1];
         } else {
-          // Búsqueda heurística de URL en cualquier columna
-          const found = row.find(c => c.includes("instagram.com/"));
-          if (found) postUrl = found;
-          else if (row[0] && row[0].startsWith("http")) postUrl = row[0];
+          // Extraer desde la URL de Instagram
+          const urlMatch = cleanUrl.match(/instagram\.com\/(?:p\/|reel\/|tv\/)?([a-zA-Z0-9._]+)/);
+          cleanHandle = (urlMatch && urlMatch[1] && !['p', 'reel', 'tv'].includes(urlMatch[1])) ? urlMatch[1] : (rawUser.split(" ")[0].replace(/[^a-zA-Z0-9._]/g, '') || "perfil");
         }
 
-        const normalizedUrl = cleanIgUrl(postUrl);
-        if (!normalizedUrl || seenUrls.has(normalizedUrl)) {
-          continue; // Descartar si no es enlace válido o ya existe (deduplicación)
-        }
+        // Extraer bio / caption
+        let caption = bioIdx !== -1 && cols[bioIdx] ? cols[bioIdx] : (cols[1] || "Perfil / publicación de Instagram para análisis");
+        // Quitar comillas escapadas
+        caption = caption.replace(/""/g, '"').replace(/^["']|["']$/g, '');
 
-        seenUrls.add(normalizedUrl);
+        let likes = likesIdx !== -1 && cols[likesIdx] ? (parseInt(cols[likesIdx].replace(/[^0-9]/g, '')) || 0) : 0;
+        let comments = commentsIdx !== -1 && cols[commentsIdx] ? (parseInt(cols[commentsIdx].replace(/[^0-9]/g, '')) || 0) : 0;
 
-        if (userIdx !== -1 && row[userIdx]) username = row[userIdx].replace(/^@/, '');
-        if (likesIdx !== -1 && row[likesIdx]) likes = parseInt(row[likesIdx].replace(/[^0-9]/g, '')) || 0;
-        if (commentsIdx !== -1 && row[commentsIdx]) comments = parseInt(row[commentsIdx].replace(/[^0-9]/g, '')) || 0;
-        if (captionIdx !== -1 && row[captionIdx]) caption = row[captionIdx];
-
-        parsedItems.push({
-          url: normalizedUrl,
-          ownerUsername: username,
+        parsed.push({
+          url: cleanUrl,
+          ownerUsername: cleanHandle,
           likesCount: likes,
           commentsCount: comments,
-          caption: caption.length > 200 ? caption.slice(0, 197) + "..." : caption
+          caption: caption.length > 220 ? caption.slice(0, 217) + "..." : caption
         });
       }
 
-      if (parsedItems.length > 0) {
-        setImportedPosts((prev) => {
-          const combined = [...parsedItems, ...prev];
-          localStorage.setItem('settermind_imported_csv_posts', JSON.stringify(combined));
-          return combined;
+      if (parsed.length > 0) {
+        setImportedPosts(prev => {
+          const updated = [...parsed, ...prev];
+          localStorage.setItem('settermind_imported_csv_posts', JSON.stringify(updated));
+          return updated;
         });
       }
     };
-    reader.readAsText(file);
+    reader.readAsText(file, 'latin-1');
     e.target.value = '';
   };
 
@@ -437,24 +427,65 @@ export default function Dashboard() {
 
       {/* PASO 1: Centro de Mando del Setter */}
       {step === 1 && (
-          <div className="space-y-6">
-            {/* Input de URL manual */}
-            <div className="bg-[#111A28] border border-[#24334A] rounded-2xl p-6 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <h2 className="text-base font-bold text-white tracking-wide">
-                    Extracción Directa por Enlace
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Pega el enlace de una publicación o reel de Instagram para analizarlo
-                  </p>
+          <div className="space-y-8">
+            {/* Banner Superior Centro de Mando */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-[#162032] to-[#101726] border border-[#24334A] p-6 rounded-2xl shadow-xl">
+              <div>
+                <div className="flex items-center space-x-2 mb-1">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
+                    Sistema Operativo
+                  </span>
                 </div>
+                <h1 className="text-2xl font-bold text-white tracking-tight">Centro de Mando del Setter</h1>
+                <p className="text-xs text-slate-400 mt-1">
+                  Monitorea tus oportunidades, analiza prospectos de Instagram y ejecuta estrategias de prospección.
+                </p>
+              </div>
+              <div className="flex items-center space-x-3">
                 <label
                   htmlFor="csv-file-direct-input"
-                  className="inline-flex items-center space-x-2 bg-[#162032] hover:bg-[#1C283F] text-emerald-400 hover:text-emerald-300 border border-emerald-900/40 hover:border-emerald-600 font-medium px-4 py-2 rounded-xl text-xs transition cursor-pointer select-none shrink-0"
+                  className="flex items-center space-x-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 font-semibold px-4 py-2.5 rounded-xl text-xs transition cursor-pointer select-none"
                 >
-                  <span>📁 Importar Publicaciones CSV</span>
+                  <span>📁</span>
+                  <span>Importar CSV</span>
                 </label>
+              </div>
+            </div>
+
+            {/* Cuadrícula de 4 Estadísticas */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-[#162032] border border-[#24334A] p-5 rounded-2xl shadow-lg">
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Estrategias Creadas</div>
+                <div className="text-3xl font-extrabold text-white">{dashboardStats.totalStrategies}</div>
+                <div className="text-[11px] text-slate-400 mt-1">Activas en cuenta</div>
+              </div>
+              <div className="bg-[#162032] border border-[#24334A] p-5 rounded-2xl shadow-lg">
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Posts Analizados</div>
+                <div className="text-3xl font-extrabold text-emerald-400">{dashboardStats.totalSavedPosts}</div>
+                <div className="text-[11px] text-emerald-500/80 mt-1">En radar histórico</div>
+              </div>
+              <div className="bg-[#162032] border border-[#24334A] p-5 rounded-2xl shadow-lg">
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Leads en Outbox</div>
+                <div className="text-3xl font-extrabold text-amber-400">{dashboardStats.totalOutboxLeads}</div>
+                <div className="text-[11px] text-amber-500/80 mt-1">Listos para contacto</div>
+              </div>
+              <div className="bg-[#162032] border border-[#24334A] p-5 rounded-2xl shadow-lg">
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">CSV Importados</div>
+                <div className="text-3xl font-extrabold text-sky-400">{importedPosts.length}</div>
+                <div className="text-[11px] text-sky-500/80 mt-1">Disponibles ahora</div>
+              </div>
+            </div>
+
+            {/* Extracción Directa por Enlace */}
+            <div className="bg-[#111A28] border border-[#24334A] rounded-2xl p-6 space-y-4">
+              <div>
+                <h2 className="text-base font-bold text-white tracking-wide">
+                  Extracción Directa por Enlace
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Pega el enlace de una publicación o reel de Instagram para analizarlo
+                </p>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3">
@@ -510,7 +541,7 @@ export default function Dashboard() {
               />
 
               {importedPosts.length > 0 ? (
-                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                   {importedPosts.map((p, idx) => (
                     <div
                       key={idx}
@@ -518,18 +549,24 @@ export default function Dashboard() {
                     >
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center space-x-2 text-xs">
-                          <span className="font-semibold text-sky-400">@{p.ownerUsername}</span>
-                          <span className="text-slate-500">•</span>
-                          <span className="text-slate-400 text-[11px]">❤️ {p.likesCount}</span>
-                          <span className="text-slate-400 text-[11px]">💬 {p.commentsCount}</span>
+                          <span className="font-bold text-sky-400">@{p.ownerUsername}</span>
+                          {p.likesCount > 0 && (
+                            <>
+                              <span className="text-slate-500">•</span>
+                              <span className="text-slate-400 text-[11px]">❤️ {p.likesCount}</span>
+                            </>
+                          )}
+                          {p.commentsCount > 0 && (
+                            <span className="text-slate-400 text-[11px]">💬 {p.commentsCount}</span>
+                          )}
                         </div>
-                        <p className="text-xs text-slate-300 truncate">{p.caption}</p>
+                        <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">{p.caption}</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => {
                           setPostUrl(p.url);
-                          window.scrollTo({ top: 300, behavior: 'smooth' });
+                          window.scrollTo({ top: 400, behavior: 'smooth' });
                         }}
                         className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-lg text-xs transition cursor-pointer shrink-0"
                       >
