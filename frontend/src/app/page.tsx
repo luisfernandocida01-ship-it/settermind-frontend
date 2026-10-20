@@ -437,244 +437,126 @@ export default function Dashboard() {
 
       {/* PASO 1: Centro de Mando del Setter */}
       {step === 1 && (
-        <div className="space-y-8">
-          {/* Encabezado y bienvenida */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-[#162032] to-[#101726] border border-[#24334A] p-6 rounded-2xl shadow-xl">
-            <div>
-              <div className="flex items-center space-x-2 mb-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="text-xs uppercase tracking-wider font-bold text-emerald-400">Panel Activo</span>
-              </div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">Centro de Mando del Setter</h1>
-              <p className="text-xs text-slate-400 mt-0.5">Control de prospección, análisis de contenido y seguimiento de conversaciones.</p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <button
-                type="button"
-                onClick={() => router.push('/prospect')}
-                className="bg-sky-600 hover:bg-sky-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition shadow-md flex items-center space-x-1.5 cursor-pointer"
-              >
-                <span>🎯 Radar de Prospectos</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push('/strategies')}
-                className="bg-[#1E293B] hover:bg-[#2B3A52] text-slate-200 border border-[#24334A] font-semibold px-4 py-2.5 rounded-xl text-xs transition flex items-center space-x-1.5 cursor-pointer"
-              >
-                <span>📁 Mis Estrategias</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 4 KPIs Clave */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-[#162032] border border-[#24334A] p-5 rounded-2xl shadow-lg">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Estrategias Guardadas</span>
-              <div className="text-3xl font-extrabold text-white">{dashboardStats.totalStrategies}</div>
-              <span className="text-[11px] text-sky-400 mt-1 block">Nichos activos</span>
-            </div>
-            <div className="bg-[#162032] border border-[#24334A] p-5 rounded-2xl shadow-lg">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Posts en Radar</span>
-              <div className="text-3xl font-extrabold text-emerald-400">{dashboardStats.totalSavedPosts}</div>
-              <span className="text-[11px] text-slate-400 mt-1 block">Oportunidades identificadas</span>
-            </div>
-            <div className="bg-[#162032] border border-[#24334A] p-5 rounded-2xl shadow-lg">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Bandeja de Salida</span>
-              <div className="text-3xl font-extrabold text-amber-400">{dashboardStats.totalOutboxLeads}</div>
-              <span className="text-[11px] text-slate-400 mt-1 block">Mensajes listos</span>
-            </div>
-            <div className="bg-[#162032] border border-[#24334A] p-5 rounded-2xl shadow-lg">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Tasa de Acción</span>
-              <div className="text-3xl font-extrabold text-purple-400">
-                {dashboardStats.totalSavedPosts > 0 ? '100%' : '0%'}
-              </div>
-              <span className="text-[11px] text-slate-400 mt-1 block">Rastreo activo</span>
-            </div>
-          </div>
-
-          {/* Seccion en 2 columnas: Analizador Rapido + Feed de Posts en Radar */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Columna Izquierda: Extraccion Manual Rapida */}
-            <div className="lg:col-span-5 bg-[#162032] border border-[#24334A] rounded-2xl p-6 shadow-xl space-y-4">
-              <div>
-                <span className="inline-block bg-sky-500/10 text-sky-400 text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-sky-500/20 mb-2">
-                  Herramienta Directa
-                </span>
-                <h2 className="text-lg font-bold text-white tracking-tight">Analizar Publicación Específica</h2>
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Pega cualquier enlace público de Instagram para extraer sus comentarios y calificar leads.
-                </p>
-              </div>
-
-              <form onSubmit={handleUrlSubmit} className="space-y-4 pt-2">
+          <div className="space-y-6">
+            {/* Input de URL manual */}
+            <div className="bg-[#111A28] border border-[#24334A] rounded-2xl p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">URL de Instagram</label>
-                  <input
-                    type="url"
-                    required
-                    value={postUrl}
-                    onChange={(e) => setPostUrl(e.target.value)}
-                    placeholder="https://www.instagram.com/p/..."
-                    className="w-full bg-[#0B121E] border border-[#24334A] focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 outline-none transition"
-                  />
+                  <h2 className="text-base font-bold text-white tracking-wide">
+                    Extracción Directa por Enlace
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Pega el enlace de una publicación o reel de Instagram para analizarlo
+                  </p>
                 </div>
-                <button
-                  type="submit"
-                  disabled={isLoadingDetails}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-5 rounded-xl text-xs transition shadow-lg shadow-emerald-950/40 flex items-center justify-center space-x-2 disabled:opacity-60 cursor-pointer"
+                <label
+                  htmlFor="csv-file-direct-input"
+                  className="inline-flex items-center space-x-2 bg-[#162032] hover:bg-[#1C283F] text-emerald-400 hover:text-emerald-300 border border-emerald-900/40 hover:border-emerald-600 font-medium px-4 py-2 rounded-xl text-xs transition cursor-pointer select-none shrink-0"
                 >
-                  <span>{isLoadingDetails ? 'Extrayendo comentarios...' : '⚡ Analizar Publicación →'}</span>
-                </button>
-              </form>
-            </div>
+                  <span>📁 Importar Publicaciones CSV</span>
+                </label>
+              </div>
 
-            {/* Columna Derecha: Oportunidades Listas para Analizar */}
-            <div className="lg:col-span-7 bg-[#162032] border border-[#24334A] rounded-2xl p-6 shadow-xl space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-[#24334A]">
-                <div>
-                  <h2 className="text-lg font-bold text-white tracking-tight">Publicaciones Listas para Análisis</h2>
-                  <p className="text-xs text-slate-400">Posts guardados desde tus búsquedas en el Radar.</p>
-                </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="url"
+                  value={postUrl}
+                  onChange={(e) => setPostUrl(e.target.value)}
+                  placeholder="https://www.instagram.com/p/C_abc123... o /reel/..."
+                  className="flex-1 bg-[#0B121E] border border-[#24334A] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 outline-none transition"
+                />
                 <button
                   type="button"
-                  onClick={() => router.push('/strategies')}
-                  className="text-xs font-semibold text-sky-400 hover:text-sky-300 transition"
+                  onClick={handleAnalyzePost}
+                  disabled={isExtracting || !postUrl.trim()}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl text-xs uppercase tracking-wider transition shadow-lg shadow-emerald-950/40 disabled:opacity-50 cursor-pointer flex items-center justify-center space-x-2 shrink-0"
                 >
-                  Ver todas →
+                  <span>{isExtracting ? 'Extrayendo...' : '⚡ Analizar Publicación →'}</span>
                 </button>
               </div>
+            </div>
 
-              {isLoadingDashboard ? (
-                <div className="py-12 text-center text-xs text-slate-400">Cargando oportunidades del radar...</div>
-              ) : recentSavedPosts.length > 0 ? (
-                <div className="space-y-3">
-                  {recentSavedPosts.map((p, i) => (
-                    <div key={i} className="bg-[#0B121E] border border-[#24334A] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-600 transition">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <span className="text-xs font-bold text-sky-400">@{p.ownerUsername || 'cuenta'}</span>
-                          <span className="text-[10px] text-slate-500">•</span>
-                          <span className="text-[10px] text-slate-400">❤️ {p.likesCount ?? 0}</span>
-                          <span className="text-[10px] text-slate-400">💬 {p.commentsCount ?? 0}</span>
+            {/* Publicaciones Importadas desde CSV */}
+            <div className="bg-[#111A28] border border-[#24334A] rounded-2xl p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <h3 className="text-sm font-bold text-white tracking-wide">
+                    Publicaciones Importadas para Análisis
+                  </h3>
+                  <span className="bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    {importedPosts.length}
+                  </span>
+                </div>
+                {importedPosts.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearImported}
+                    className="text-[11px] text-slate-400 hover:text-rose-400 transition cursor-pointer"
+                  >
+                    Limpiar lista
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 -mt-2">
+                Publicaciones cargadas vía archivo CSV listas para extracción de leads.
+              </p>
+
+              <input
+                type="file"
+                id="csv-file-direct-input"
+                onChange={handleCsvUpload}
+                accept=".csv"
+                style={{ display: 'none' }}
+              />
+
+              {importedPosts.length > 0 ? (
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {importedPosts.map((p, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-[#0B121E] border border-[#1E2D42] rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:border-emerald-900/50 transition"
+                    >
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center space-x-2 text-xs">
+                          <span className="font-semibold text-sky-400">@{p.ownerUsername}</span>
+                          <span className="text-slate-500">•</span>
+                          <span className="text-slate-400 text-[11px]">❤️ {p.likesCount}</span>
+                          <span className="text-slate-400 text-[11px]">💬 {p.commentsCount}</span>
                         </div>
-                        <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
-                          {p.caption || 'Publicación guardada para extracción de leads.'}
-                        </p>
+                        <p className="text-xs text-slate-300 truncate">{p.caption}</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => {
                           setPostUrl(p.url);
-                          if (p.strategyNiche) setNiche(p.strategyNiche);
-                          if (p.strategyAvatar) setAvatar(p.strategyAvatar);
-                          const fakeEvent = { preventDefault: () => {} } as any;
-                          handleUrlSubmit(fakeEvent);
+                          window.scrollTo({ top: 300, behavior: 'smooth' });
                         }}
-                        className="shrink-0 bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold py-2 px-3 rounded-lg transition cursor-pointer"
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-lg text-xs transition cursor-pointer shrink-0"
                       >
-                        ⚡ Analizar Ahora
+                        ⚡ Analizar Publicación
                       </button>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="py-8 text-center space-y-3">
-                  <p className="text-xs text-slate-400">Aún no tienes publicaciones guardadas en tus estrategias.</p>
-                  <button
-                    type="button"
-                    onClick={() => router.push('/prospect')}
-                    className="inline-block bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold py-2 px-4 rounded-xl transition"
-                  >
-                    Ir al Radar y Guardar Posts →
-                  </button>
+                <div className="py-8 text-center bg-[#0B121E] border border-dashed border-[#24334A] rounded-xl space-y-3">
+                  <p className="text-xs text-slate-400">Aún no has importado publicaciones desde CSV.</p>
+                  <div>
+                    <label
+                      htmlFor="csv-file-direct-input"
+                      className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 underline cursor-pointer py-1.5 px-4 rounded-lg bg-emerald-950/30 hover:bg-emerald-950/60 border border-emerald-800/40 transition inline-flex items-center space-x-2 select-none"
+                    >
+                      <span>📁</span>
+                      <span>Seleccionar archivo .CSV para cargar</span>
+                    </label>
+                  </div>
                 </div>
               )}
             </div>
           </div>
+        )}
 
-              {/* Tarjeta de Publicaciones Importadas por CSV */}
-              <div className="bg-[#162032] border border-[#24334A] rounded-2xl p-6 space-y-4">
-                <div className="flex items-center justify-between pb-2 border-b border-[#24334A]">
-                  <div>
-                    <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                      <span>Publicaciones Importadas para Análisis</span>
-                      <span className="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded-full font-mono">
-                        {importedPosts.length}
-                      </span>
-                    </h2>
-                    <p className="text-xs text-slate-400">Publicaciones cargadas vía archivo CSV listas para extracción de leads.</p>
-                  </div>
-                  {importedPosts.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleClearImported}
-                      className="text-xs text-slate-400 hover:text-rose-400 transition"
-                    >
-                      Limpiar lista
-                    </button>
-                  )}
-                </div>
-
-                {importedPosts.length > 0 ? (
-                  <div className="space-y-3">
-                    {importedPosts.map((p, i) => (
-                      <div key={i} className="bg-[#0B121E] border border-[#24334A] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-emerald-600/40 transition">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className="text-xs font-bold text-emerald-400">@{p.ownerUsername || 'cuenta'}</span>
-                            <span className="text-[10px] text-slate-500">•</span>
-                            <span className="text-[10px] text-slate-400">❤️ {p.likesCount ?? 0}</span>
-                            <span className="text-[10px] text-slate-400">💬 {p.commentsCount ?? 0}</span>
-                          </div>
-                          <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
-                            {p.caption || 'Publicación importada para análisis.'}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPostUrl(p.url);
-                            window.scrollTo({ top: 300, behavior: 'smooth' });
-                          }}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-lg text-xs transition cursor-pointer shrink-0"
-                        >
-                          ⚡ Analizar Publicación
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="py-8 text-center bg-[#0B121E] border border-dashed border-[#24334A] rounded-xl space-y-3">
-                    <p className="text-xs text-slate-400">Aún no has importado publicaciones desde CSV.</p>
-                    <input
-                      type="file"
-                      id="csv-file-direct-input"
-                      onChange={handleCsvUpload}
-                      accept=".csv"
-                      style={{ display: 'none' }}
-                    />
-                    <div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const el = document.getElementById('csv-file-direct-input') as HTMLInputElement;
-                          if (el) el.click();
-                        }}
-                        className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 underline cursor-pointer py-1.5 px-4 rounded-lg bg-emerald-950/30 hover:bg-emerald-950/60 border border-emerald-800/40 transition inline-flex items-center space-x-2"
-                      >
-                        <span>📁</span>
-                        <span>Seleccionar archivo .CSV para cargar</span>
-                      </button>
-                    </div>
-                  </div>
-                  </div>
-                )}
-              </div>
-
-        </div>
-      )}
-
-      {/* PASO 2: Contexto y Congruencia */}
+        {/* PASO 2: Contexto y Congruencia */}
       {step === 2 && postDetails && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
