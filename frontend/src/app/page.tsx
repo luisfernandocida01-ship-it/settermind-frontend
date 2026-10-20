@@ -467,11 +467,11 @@ export default function Dashboard() {
                 />
                 <button
                   type="button"
-                  onClick={handleAnalyzePost}
-                  disabled={isExtracting || !postUrl.trim()}
+                  onClick={handleScrape}
+                  disabled={isAnalyzing || !postUrl.trim()}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl text-xs uppercase tracking-wider transition shadow-lg shadow-emerald-950/40 disabled:opacity-50 cursor-pointer flex items-center justify-center space-x-2 shrink-0"
                 >
-                  <span>{isExtracting ? 'Extrayendo...' : '⚡ Analizar Publicación →'}</span>
+                  <span>{isAnalyzing ? 'Extrayendo...' : '⚡ Analizar Publicación →'}</span>
                 </button>
               </div>
             </div>
