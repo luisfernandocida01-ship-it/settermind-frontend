@@ -36,10 +36,14 @@ function ResetPasswordForm() {
     setError(null);
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://settermind-flask-template.onrender.com';
+      const backendUrl = 'https://settermind-flask-template.onrender.com';
+      console.log('Enviando reset password a:', `${backendUrl}/api/auth/reset-password`);
       const res = await fetch(`${backendUrl}/api/auth/reset-password`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({ token, new_password: password })
       });
       const data = await res.json();
